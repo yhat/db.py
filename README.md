@@ -1,4 +1,5 @@
 # db.py
+[demo](http://nbviewer.ipython.org/gist/glamp/3fa8032499b6db007f0f)
 
 ## What is it?
 `db.py` is an easier way to interact with your databases. It makes it easier to explore tables, columns, views, etc. It puts the emphasis on user interaction, information display, and providing easy to use helper functions.
@@ -202,6 +203,6 @@ __Arguments__
     - [x] redshift
     - [x] mysql
     - [ ] mssql (going to be a little trickier since i don't have one)
-- [ ] publish examples to nbviewer
+- [x] publish examples to nbviewer
 - [x] improve documentation and readme
 - [ ] add sample database to distrobution
