@@ -336,4 +336,4 @@ __Arguments__
     - [ ] mssql (going to be a little trickier since i don't have one)
 - [x] publish examples to nbviewer
 - [x] improve documentation and readme
-- [ ] add sample database to distrobution
+- [x] add sample database to distrobution
