@@ -591,3 +591,9 @@ class DB(object):
 
     def shell(self):
         pass
+
+def DemoDB():
+    _ROOT = os.path.abspath(os.path.dirname(__file__))
+    chinook = os.path.join(_ROOT, 'data', "chinook.sqlite")
+    return DB(filename=chinook, dbtype="sqlite")
+
