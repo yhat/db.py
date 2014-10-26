@@ -1,5 +1,7 @@
 # db.py
 
+## What is it?
+
 ## Quickstart
 
 ### Installation
@@ -15,8 +17,21 @@ $ pip install db.py
 >>> db.save_credentials(profile="local")
 ```
 
+## How To
+
+### Connecting to a Database
+#### `DB()`
+#### Saving a profile
+#### Connecting from a profile
+### Executing Queries
+#### From a string
+#### From a file
+### Finding Tables and Columns
+#### Tables 
+#### Columns
+
 ## TODO
-- [ ] Switch to newever version of pandas sql api
+- [x] Switch to newever version of pandas sql api
 - [ ] Add database support
     - [x] postgres
     - [ ] redshift
