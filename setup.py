@@ -16,7 +16,7 @@ setup(
     license="BSD",
     packages=find_packages(),
     package_dir={"db": "db"},
-    package_data={"db": []},
+    package_data={"db": ["data/*.sqlite"]},
     description="a db package that doesn't suck",
     long_description=open("README.rst").read(),
     install_requires=required,
