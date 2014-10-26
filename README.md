@@ -104,7 +104,7 @@ $ pip install db.py
 ### Demo
 ```python
 >>> from db import DemoDB # or connect to your own using DB. see below
->>> db = DemoDB()
+>>> db = DemoDB() # comes from: http://chinookdatabase.codeplex.com/
 >>> db.tables
 +---------------+----------------------------------------------------------------------------------+
 | Table         | Columns                                                                          |

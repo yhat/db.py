@@ -118,15 +118,146 @@ Installation
 
     $ pip install db.py
 
-Getting Started
-~~~~~~~~~~~~~~~
+Demo
+~~~~
 
 .. code:: python
 
-    >>> from db import DB
-    >>> db = DB(username="greg", password="secret", hostname="localhost",
-                dbtype="postgres")
-    >>> db.save_credentials(profile="local")
+    >>> from db import DemoDB # or connect to your own using DB. see below
+    >>> db = DemoDB()
+    >>> db.tables
+    +---------------+----------------------------------------------------------------------------------+
+    | Table         | Columns                                                                          |
+    +---------------+----------------------------------------------------------------------------------+
+    | Album         | AlbumId, Title, ArtistId                                                         |
+    | Artist        | ArtistId, Name                                                                   |
+    | Customer      | CustomerId, FirstName, LastName, Company, Address, City, State, Country, PostalC |
+    |               | ode, Phone, Fax, Email, SupportRepId                                             |
+    | Employee      | EmployeeId, LastName, FirstName, Title, ReportsTo, BirthDate, HireDate, Address, |
+    |               |  City, State, Country, PostalCode, Phone, Fax, Email                             |
+    | Genre         | GenreId, Name                                                                    |
+    | Invoice       | InvoiceId, CustomerId, InvoiceDate, BillingAddress, BillingCity, BillingState, B |
+    |               | illingCountry, BillingPostalCode, Total                                          |
+    | InvoiceLine   | InvoiceLineId, InvoiceId, TrackId, UnitPrice, Quantity                           |
+    | MediaType     | MediaTypeId, Name                                                                |
+    | Playlist      | PlaylistId, Name                                                                 |
+    | PlaylistTrack | PlaylistId, TrackId                                                              |
+    | Track         | TrackId, Name, AlbumId, MediaTypeId, GenreId, Composer, Milliseconds, Bytes, Uni |
+    |               | tPrice                                                                           |
+    +---------------+----------------------------------------------------------------------------------+
+    >>> db.tables.Customer
+    +-----------------------------+
+    |           Customer          |
+    +--------------+--------------+
+    | Column       | Type         |
+    +--------------+--------------+
+    | CustomerId   | INTEGER      |
+    | FirstName    | NVARCHAR(40) |
+    | LastName     | NVARCHAR(20) |
+    | Company      | NVARCHAR(80) |
+    | Address      | NVARCHAR(70) |
+    | City         | NVARCHAR(40) |
+    | State        | NVARCHAR(40) |
+    | Country      | NVARCHAR(40) |
+    | PostalCode   | NVARCHAR(10) |
+    | Phone        | NVARCHAR(24) |
+    | Fax          | NVARCHAR(24) |
+    | Email        | NVARCHAR(60) |
+    | SupportRepId | INTEGER      |
+    +--------------+--------------+
+    >>> db.tables.Customer.sample()
+       CustomerId  FirstName    LastName  \
+    0           4      Bjørn      Hansen
+    1          26    Richard  Cunningham
+    2           1       Luís   Gonçalves
+    3          21      Kathy       Chase
+    4           6     Helena        Holý
+    5          14       Mark     Philips
+    6          49  Stanisław      Wójcik
+    7          19        Tim       Goyer
+    8          45   Ladislav      Kovács
+    9           8       Daan     Peeters
+
+                                                Company  \
+    0                                              None
+    1                                              None
+    2  Embraer - Empresa Brasileira de Aeronáutica S.A.
+    3                                              None
+    4                                              None
+    5                                             Telus
+    6                                              None
+    7                                        Apple Inc.
+    8                                              None
+    9                                              None
+
+                               Address                 City State         Country  \
+    0                 Ullevålsveien 14                 Oslo  None          Norway
+    1              2211 W Berry Street           Fort Worth    TX             USA
+    2  Av. Brigadeiro Faria Lima, 2170  São José dos Campos    SP          Brazil
+    3                 801 W 4th Street                 Reno    NV             USA
+    4                    Rilská 3174/6               Prague  None  Czech Republic
+    5                   8210 111 ST NW             Edmonton    AB          Canada
+    6                     Ordynacka 10               Warsaw  None          Poland
+    7                  1 Infinite Loop            Cupertino    CA             USA
+    8                Erzsébet krt. 58.             Budapest  None         Hungary
+    9                  Grétrystraat 63             Brussels  None         Belgium
+
+      PostalCode               Phone                 Fax  \
+    0       0171     +47 22 44 22 22                None
+    1      76110   +1 (817) 924-7272                None
+    2  12227-000  +55 (12) 3923-5555  +55 (12) 3923-5566
+    3      89503   +1 (775) 223-7665                None
+    4      14300    +420 2 4177 0449                None
+    5    T6G 2C7   +1 (780) 434-4554   +1 (780) 434-5565
+    6     00-358    +48 22 828 37 39                None
+    7      95014   +1 (408) 996-1010   +1 (408) 996-1011
+    8     H-1073                None                None
+    9       1000    +32 02 219 03 03                None
+
+                          Email  SupportRepId
+    0     bjorn.hansen@yahoo.no             4
+    1  ricunningham@hotmail.com             4
+    2      luisg@embraer.com.br             3
+    3       kachase@hotmail.com             5
+    4           hholy@gmail.com             5
+    5        mphilips12@shaw.ca             5
+    6    stanisław.wójcik@wp.pl             4
+    7          tgoyer@apple.com             3
+    8  ladislav_kovacs@apple.hu             3
+    9     daan_peeters@apple.be             4
+    >>> db.find_column("*Name*")
+    +-----------+-------------+---------------+
+    | Table     | Column Name | Type          |
+    +-----------+-------------+---------------+
+    | Artist    |     Name    | NVARCHAR(120) |
+    | Customer  |  FirstName  | NVARCHAR(40)  |
+    | Customer  |   LastName  | NVARCHAR(20)  |
+    | Employee  |  FirstName  | NVARCHAR(20)  |
+    | Employee  |   LastName  | NVARCHAR(20)  |
+    | Genre     |     Name    | NVARCHAR(120) |
+    | MediaType |     Name    | NVARCHAR(120) |
+    | Playlist  |     Name    | NVARCHAR(120) |
+    | Track     |     Name    | NVARCHAR(200) |
+    +-----------+-------------+---------------+
+    >>> db.find_table("A*")
+    +--------+--------------------------+
+    | Table  | Columns                  |
+    +--------+--------------------------+
+    | Album  | AlbumId, Title, ArtistId |
+    | Artist | ArtistId, Name           |
+    +--------+--------------------------+
+    >>> db.query("select * from Artist limit 10;")
+       ArtistId                  Name
+    0         1                 AC/DC
+    1         2                Accept
+    2         3             Aerosmith
+    3         4     Alanis Morissette
+    4         5       Alice In Chains
+    5         6  Antônio Carlos Jobim
+    6         7          Apocalyptica
+    7         8            Audioslave
+    8         9              BackBeat
+    9        10          Billy Cobham
 
 How To
 ------
@@ -264,5 +395,5 @@ TODO
 
 -  [x] publish examples to nbviewer
 -  [x] improve documentation and readme
--  [ ] add sample database to distrobution
+-  [x] add sample database to distrobution
 
