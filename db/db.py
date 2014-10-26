@@ -258,11 +258,14 @@ class Table(object):
         q = self.query_templates['table']['sample'] % (self.name, n)
         return pd.io.sql.read_sql(q, self.con)
 
+
 class TableSet(object):
     """
     Set of Tables. Used for displaying search results in terminal/ipython notebook.
     """
     def __init__(self, tables):
+        for tbl in tables:
+            setattr(self, tbl.name, tbl)
         self.tables = tables
     
     def __getitem__(self, i):
@@ -342,6 +345,8 @@ class DB(object):
 
         if dbtype!="sqlite" and username is None and password is None and hostname=="localhost" and port==5432 and dbname is None:
             self.load_credentials(profile)
+        elif dbtype=="sqlite" and filename is None:
+            self.load_credentials(profile)
         else:
             self.username = username
             self.password = password
@@ -360,7 +365,7 @@ class DB(object):
                 host=self.hostname, port=self.port, dbname=self.dbname)
             self.cur = self.con.cursor()
         elif dbtype=="sqlite":
-            self.con = sqlite.connect(filename)
+            self.con = sqlite.connect(self.filename)
             self.cur = self.con.cursor()
             self._create_sqlite_metatable()
         elif dbtype=="mysql":
@@ -423,6 +428,11 @@ class DB(object):
         >>> db.save_credentials(profile="staging")
         >>> db = DB(profile="staging")
         """
+        if self.filename:
+            db_filename = os.path.join(os.getcwd(), self.filename)
+        else:
+            db_filename = None
+
         user = os.path.expanduser("~")
         f = os.path.join(user, ".db.py_" + profile)
         creds = {
@@ -430,7 +440,7 @@ class DB(object):
             "password": self.password,
             "hostname": self.hostname,
             "port": self.port,
-            "filename": self.filename,
+            "filename": db_filename,
             "dbname": self.dbname,
             "dbtype": self.dbtype
         }
@@ -485,9 +495,10 @@ class DB(object):
         for table in self.tables:
             for col in vars(table):
                 if glob.fnmatch.fnmatch(col, search):
-                    if data_type and getattr(table, col).type not in data_type:
+                    if data_type and isinstance(getattr(table, col), Column) and getattr(table, col).type not in data_type:
                         continue
-                    cols.append(getattr(table, col))
+                    if isinstance(getattr(table, col), Column):
+                        cols.append(getattr(table, col))
         return ColumnSet(cols)
 
     def query(self, q):
@@ -567,8 +578,8 @@ class DB(object):
             if table_name not in tables:
                 tables[table_name] = []
             tables[table_name].append(Column(self.con, self.query_templates, table_name, column_name, data_type))
-        Tables = namedtuple("Tables", " ".join(sorted(tables.keys())))
-        self.tables = Tables(*[Table(self.con, self.query_templates, t, tables[t]) for t in sorted(tables.keys())])
+        self.tables = TableSet([Table(self.con, self.query_templates, t, tables[t]) for t in sorted(tables.keys())])
+
 
     def shell(self):
         pass
