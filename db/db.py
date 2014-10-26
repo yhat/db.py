@@ -8,13 +8,15 @@ import sys
 import pandas as pd
 from prettytable import PrettyTable
 
+from queries import mysql as mysql_templates
 from queries import postgres as postgres_templates
 from queries import sqlite as sqlite_templates
 
 
 queries_templates = {
+    "mysql": mysql_templates,
     "postgres": postgres_templates,
-    "sqlite": sqlite_templates
+    "sqlite": sqlite_templates,
 }
 
 # attempt to import the relevant database libraries
@@ -25,7 +27,7 @@ except:
     pass
 
 try:
-    import mysql as mysql
+    import MySQLdb
 except:
     pass
 
@@ -230,7 +232,11 @@ class Table(object):
         >>> db.people.unique("name", "age")
         >>> db.people.unique("name", "age", "zipcode")
         """
-        q = self.query_templates['table']['unique'] % (", ".join(args), self.table)
+        if len(args)==0:
+            columns = "*"
+        else:
+            columns = ", ".join(args)
+        q = self.query_templates['table']['unique'] % (columns, self.name)
         return pd.io.sql.read_sql(q, self.con)
 
     def sample(self, n=10):
@@ -249,7 +255,7 @@ class Table(object):
         n: int
             number of rows to sample
         """
-        q = self.query_templates['table']['sample'] % (self.table, n)
+        q = self.query_templates['table']['sample'] % (self.name, n)
         return pd.io.sql.read_sql(q, self.con)
 
 class TableSet(object):
@@ -357,6 +363,22 @@ class DB(object):
             self.con = sqlite.connect(filename)
             self.cur = self.con.cursor()
             self._create_sqlite_metatable()
+        elif dbtype=="mysql":
+            creds = {}
+            for arg in ["username", "password", "hostname", "port", "dbname"]:
+                if getattr(self, arg):
+                    value = getattr(self, arg)
+                    if arg=="username":
+                        arg = "user"
+                    elif arg=="password":
+                        arg = "passwd"
+                    elif arg=="dbname":
+                        arg = "db"
+                    elif arg=="hostname":
+                        arg = "host"
+                    creds[arg] = value
+            self.con = MySQLdb.connect(**creds)
+            self.cur = self.con.cursor()
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
@@ -513,7 +535,7 @@ class DB(object):
         return self.query(open(filename).read())
 
     def _create_sqlite_metatable(self):
-        sys.stderr.write("Indexing schema. This will take a second...",
+        sys.stderr.write("Indexing schema. This will take a second...")
         rows_to_insert = []
         tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
         for table in tables:

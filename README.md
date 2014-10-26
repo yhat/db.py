@@ -200,7 +200,7 @@ __Arguments__
     - [x] postgres
     - [x] sqlite
     - [ ] redshift
-    - [ ] mysql
+    - [x] mysql
     - [ ] mssql
 - [ ] publish examples to nbviewer
 - [x] improve documentation and readme
