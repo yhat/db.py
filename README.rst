@@ -1,6 +1,8 @@
 db.py
 =====
 
+`demo <http://nbviewer.ipython.org/gist/glamp/3fa8032499b6db007f0f>`__
+
 What is it?
 -----------
 
@@ -260,7 +262,7 @@ TODO
    -  [x] mysql
    -  [ ] mssql (going to be a little trickier since i don't have one)
 
--  [ ] publish examples to nbviewer
+-  [x] publish examples to nbviewer
 -  [x] improve documentation and readme
 -  [ ] add sample database to distrobution
 

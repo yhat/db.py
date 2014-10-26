@@ -36,6 +36,11 @@ try:
 except:
     pass
 
+try:
+    import pyodbc
+except:
+    pass
+
 
 class Column(object):
     """
@@ -384,6 +389,9 @@ class DB(object):
                     creds[arg] = value
             self.con = MySQLdb.connect(**creds)
             self.cur = self.con.cursor()
+        elif dbtype=="mssql":
+            raise Exception("MS SQL not yet suppported")
+            # self.con = pyodbc.connect
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
