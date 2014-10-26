@@ -70,7 +70,7 @@ class Column(object):
 
         """
         q = self.query_templates['column']['head'] % (self.name, self.table, n)
-        return pd.io.sql.read_frame(q, self.con)[self.name]
+        return pd.io.sql.read_sql(q, self.con)[self.name]
 
     def all(self):
         """
@@ -82,7 +82,7 @@ class Column(object):
                 <name_of_the_table>
         """
         q = self.query_templates['column']['all'] % (self.name, self.table)
-        return pd.io.sql.read_frame(q, self.con)[self.name]
+        return pd.io.sql.read_sql(q, self.con)[self.name]
 
     def unique(self):
         """
@@ -94,7 +94,7 @@ class Column(object):
                 <name_of_the_table>
         """
         q = self.query_templates['column']['unique'] % (self.name, self.table)
-        return pd.io.sql.read_frame(q, self.con)[self.name]
+        return pd.io.sql.read_sql(q, self.con)[self.name]
 
     def sample(self, n=10):
         """
@@ -113,7 +113,7 @@ class Column(object):
             number of rows to sample
         """
         q = self.query_templates['column']['sample'] % (self.name, self.table, n)
-        return pd.io.sql.read_frame(q, self.con)[self.name]
+        return pd.io.sql.read_sql(q, self.con)[self.name]
 
 class Table(object):
     """
@@ -173,7 +173,7 @@ class Table(object):
         >>> db.people.select("name", "age") # select name and age from people table
         """
         q = self.query_templates['table']['select'] % (", ".join(args), self.name)
-        return pd.io.sql.read_frame(q, self.con)
+        return pd.io.sql.read_sql(q, self.con)
     
     def head(self, n=6):
         """
@@ -190,7 +190,7 @@ class Table(object):
             number of rows to return
         """
         q = self.query_templates['table']['head'] % (self.name, n)
-        return pd.io.sql.read_frame(q, self.con)
+        return pd.io.sql.read_sql(q, self.con)
 
     def all(self):
         """
@@ -202,7 +202,7 @@ class Table(object):
         """
         
         q = self.query_templates['table']['all'] % (self.name)
-        return pd.io.sql.read_frame(q, self.con)
+        return pd.io.sql.read_sql(q, self.con)
     
     def unique(self, *args):
         """
@@ -227,7 +227,7 @@ class Table(object):
         >>> db.people.unique("name", "age", "zipcode")
         """
         q = self.query_templates['table']['unique'] % (", ".join(args), self.table)
-        return pd.io.sql.read_frame(q, self.con)
+        return pd.io.sql.read_sql(q, self.con)
 
     def sample(self, n=10):
         """
@@ -246,7 +246,7 @@ class Table(object):
             number of rows to sample
         """
         q = self.query_templates['table']['sample'] % (self.table, n)
-        return pd.io.sql.read_frame(q, self.con)
+        return pd.io.sql.read_sql(q, self.con)
 
 class TableSet(object):
     """
@@ -478,7 +478,7 @@ class DB(object):
             '''
         >>> lead_stats = db.query(q)
         """
-        return pd.io.sql.read_frame(q, self.con)
+        return pd.io.sql.read_sql(q, self.con)
 
     def query_from_file(self, filename):
         """
