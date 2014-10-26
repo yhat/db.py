@@ -355,7 +355,7 @@ class DB(object):
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
         self.query_templates = queries_templates.get(self.dbtype).queries
 
-        if dbtype=="postgres":
+        if dbtype=="postgres" or dbtype=="redshift":
             self.con = pg.connect(user=self.username, password=self.password,
                 host=self.hostname, port=self.port, dbname=self.dbname)
             self.cur = self.con.cursor()

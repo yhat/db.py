@@ -199,9 +199,9 @@ __Arguments__
 - [ ] Add database support
     - [x] postgres
     - [x] sqlite
-    - [ ] redshift
+    - [x] redshift
     - [x] mysql
-    - [ ] mssql
+    - [ ] mssql (going to be a little trickier since i don't have one)
 - [ ] publish examples to nbviewer
 - [x] improve documentation and readme
 - [ ] add sample database to distrobution
