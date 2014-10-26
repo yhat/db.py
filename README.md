@@ -133,15 +133,13 @@ __Arguments__
 >>> from db import DB
 >>> db = DB(username="greg", password="secret", hostname="localhost",
             dbtype="postgres")
+>>> db.save_credentials() # this will save to "default"
 >>> db.save_credentials(profile="local_pg")
-# this will save to "default"
->>> db.save_credentials()
 ```
 #### Connecting from a profile
 ```python
 >>> from db import DB
-# this loads "default" profile
->>> db = DB()
+>>> db = DB() # this loads "default" profile
 >>> db = DB(profile="local_pg")
 ```
 ### Executing Queries
