@@ -158,19 +158,41 @@ __Arguments__
 ### Searching for Tables and Columns
 #### Tables
 ```python
->>> db.find_table("tmp*") # returns all tables prefixed w/ tmp
->>> db.find_table("sg_trans*") # returns all tables prefixed w/ sg_trans
->>> db.find_table("*trans*") # returns all tables containing trans
->>> db.find_table("*") # returns everythin
+>>> db.find_table("*mt*")
++------------------+----------------------------------------------------------------------------------+
+| Table            | Columns                                                                          |
++------------------+----------------------------------------------------------------------------------+
+| mt_s3_logs       | bucket_owner, bucket, datetime, ip, requestor_id, request_id, operation, key, ht |
+|                  | tp_method_uri_proto, http_status, s3_error, bytes_sent, object_size, total_time, |
+|                  |  turn_around_time, referer, user_agent, _id                                      |
+| mt_s3_logs_users | _id, user_id                                                                     |
+| tmp_mt_model     | _id, datetime, user_id, n, key, previous_key, tdiff, same_session                |
++------------------+----------------------------------------------------------------------------------+
+>>> results = db.find_table("tmp*") # returns all tables prefixed w/ tmp
+>>> results = db.find_table("sg_trans*") # returns all tables prefixed w/ sg_trans
+>>> results = db.find_table("*trans*") # returns all tables containing trans
+>>> results = db.find_table("*") # returns everythin
 ```
 #### Columns
 ```python
->>> db.find_column("tmp*") # returns all columns prefixed w/ tmp
->>> db.find_column("sg_trans*") # returns all columns prefixed w/ sg_trans
->>> db.find_column("*trans*") # returns all columns containing trans
->>> db.find_column("*trans*", datatype="varchar") # returns all columns containing trans that are varchars
->>> db.find_column("*trans*", datatype=["varchar", float8]) # returns all columns that are varchars or float8
->>> db.find_column("*") # returns everything
+>>> db.find_column("_id")
++------------------+-------------+------+
+| Table            | Column Name | Type |
++------------------+-------------+------+
+| ga_data          |     _id     | int4 |
+| jobs             |     _id     | int4 |
+| mt_s3_logs       |     _id     | int8 |
+| mt_s3_logs_users |     _id     | int8 |
+| tmp_mt_model     |     _id     | int8 |
+| tracking         |     _id     | int4 |
+| users            |     _id     | int4 |
++------------------+-------------+------+
+>>> results = db.find_column("tmp*") # returns all columns prefixed w/ tmp
+>>> results = db.find_column("sg_trans*") # returns all columns prefixed w/ sg_trans
+>>> results = db.find_column("*trans*") # returns all columns containing trans
+>>> results = db.find_column("*trans*", datatype="varchar") # returns all columns containing trans that are varchars
+>>> results = db.find_column("*trans*", datatype=["varchar", float8]) # returns all columns that are varchars or float8
+>>> results = db.find_column("*") # returns everything
 ```
 
 ## TODO
