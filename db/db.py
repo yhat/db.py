@@ -3,14 +3,18 @@ import glob
 import json
 import base64
 import os
+import sys
 
 import pandas as pd
 from prettytable import PrettyTable
 
-from queries import postgres
+from queries import postgres as postgres_templates
+from queries import sqlite as sqlite_templates
+
 
 queries_templates = {
-    "postgres": postgres
+    "postgres": postgres_templates,
+    "sqlite": sqlite_templates
 }
 
 # attempt to import the relevant database libraries
@@ -319,29 +323,40 @@ class DB(object):
         Hostname your database is running on (i.e. "localhost", "10.20.1.248")
     port: int
         Port the database is running on (defaults to 5432)
+    filename: str
+        path to sqlite database
     dbname: str
         Name of the database
     profile: str
         Preconfigured database credentials / profile for how you like your queries
     """
     def __init__(self, username=None, password=None, hostname="localhost",
-            port=5432, dbname=None, dbtype=None, profile="default", exclude_system_tables=True):
+            port=5432, filename=None, dbname=None, dbtype=None, profile="default", exclude_system_tables=True):
         
-        if username is None and password is None and hostname=="localhost" and port==5432 and dbname is None:
+
+        if dbtype!="sqlite" and username is None and password is None and hostname=="localhost" and port==5432 and dbname is None:
             self.load_credentials(profile)
         else:
             self.username = username
             self.password = password
             self.hostname = hostname
             self.port = port
+            self.filename = filename
             self.dbname = dbname
             self.dbtype = dbtype
 
+        if self.dbtype is None:
+            raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
         self.query_templates = queries_templates.get(self.dbtype).queries
 
-        self.con = pg.connect(user=self.username, password=self.password,
+        if dbtype=="postgres":
+            self.con = pg.connect(user=self.username, password=self.password,
                 host=self.hostname, port=self.port, dbname=self.dbname)
-        self.cur = self.con.cursor()
+            self.cur = self.con.cursor()
+        elif dbtype=="sqlite":
+            self.con = sqlite.connect(filename)
+            self.cur = self.con.cursor()
+            self._create_sqlite_metatable()
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
@@ -359,12 +374,13 @@ class DB(object):
         f = os.path.join(user, ".db.py_" + profile)
         if os.path.exists(f):
             creds = json.loads(base64.decodestring(open(f, 'rb').read()))
-            self.username = creds['username']
-            self.password = creds['password']
-            self.hostname = creds['hostname']
-            self.port = creds['port']
-            self.dbname = creds['dbname']
-            self.dbtype = creds['dbtype']
+            self.username = creds.get('username')
+            self.password = creds.get('password')
+            self.hostname = creds.get('hostname')
+            self.port = creds.get('port')
+            self.filename = creds.get('filename')
+            self.dbname = creds.get('dbname')
+            self.dbtype = creds.get('dbtype')
         else:
             raise Exception("Credentials not configured!")
 
@@ -392,6 +408,7 @@ class DB(object):
             "password": self.password,
             "hostname": self.hostname,
             "port": self.port,
+            "filename": self.filename,
             "dbname": self.dbname,
             "dbtype": self.dbtype
         }
@@ -494,6 +511,20 @@ class DB(object):
         >>> db.query_from_file("myscript.sql")
         """
         return self.query(open(filename).read())
+
+    def _create_sqlite_metatable(self):
+        sys.stderr.write("Indexing schema. This will take a second...",
+        rows_to_insert = []
+        tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
+        for table in tables:
+            for row in self.cur.execute("pragma table_info(%s)" % table):
+                rows_to_insert.append((table, row[1], row[2]))
+        self.cur.execute("drop table if exists tmp_dbpy_schema;")
+        self.cur.execute("create temp table tmp_dbpy_schema(table_name varchar, column_name varchar, data_type varchar);")
+        for row in rows_to_insert:
+            self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
+        self.con.commit()
+        sys.stderr.write("finished!\n")
     
     def refresh_schema(self, exclude_system_tables=True):
         """

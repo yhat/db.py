@@ -119,6 +119,7 @@ __Arguments__
 - *hostname*: hostname of the database (i.e. `localhost`, `dw.mardukas.com`, `ec2-54-191-289-254.us-west-2.compute.amazonaws.com`)
 - *port*: port the database is running on (i.e. 5432)
 - *dbname*: name of the database (i.e. `hanksdb`)
+- *filename*: path to sqlite database (i.e. `baseball-archive-2012.sqlite`, `employees.db`)
 - *dbtype*: type of database you're connecting to (postgres, mysql, sqlite, redshfit)
 - *profile*: name of the profile you want to use to connect. using this negates the need to specify any other arguments
 - *exclude_system_tables*: whether or not to load schema information for internal tables. for example, postgres has a bunch of tables prefixed with `pg_` that you probably don't actually care about. on the other had if you're administrating a database, you might want to query these tables
@@ -197,9 +198,9 @@ __Arguments__
 - [x] Switch to newever version of pandas sql api
 - [ ] Add database support
     - [x] postgres
+    - [x] sqlite
     - [ ] redshift
     - [ ] mysql
-    - [ ] sqlite
     - [ ] mssql
 - [ ] publish examples to nbviewer
 - [x] improve documentation and readme
