@@ -96,6 +96,7 @@ Search your schema
 +---------------+---------------+---------+
 ```
 [IPython Notebook](http://nbviewer.ipython.org/gist/glamp/3fa8032499b6db007f0f) friendly
+![](https://raw.githubusercontent.com/yhat/db.py/master/examples/ipython.png)
 
 ## Quickstart
 
