@@ -771,6 +771,8 @@ class DB(object):
 
         Examples
         ----------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
         >>> db.find_table("A*")
             +--------+--------------------------+
             | Table  | Columns                  |
@@ -778,10 +780,10 @@ class DB(object):
             | Album  | AlbumId, Title, ArtistId |
             | Artist | ArtistId, Name           |
             +--------+--------------------------+
-        >>> db.find_table("tmp*") # returns all tables prefixed w/ tmp
-        >>> db.find_table("sg_trans*") # returns all tables prefixed w/ sg_trans
-        >>> db.find_table("*trans*") # returns all tables containing trans
-        >>> db.find_table("*") # returns everything
+        >>> results = db.find_table("tmp*") # returns all tables prefixed w/ tmp
+        >>> results = db.find_table("prod_*") # returns all tables prefixed w/ prod_
+        >>> results = db.find_table("*Invoice*") # returns all tables containing trans
+        >>> results = db.find_table("*") # returns everything
         """
         tables = []
         for table in self.tables:
@@ -802,12 +804,53 @@ class DB(object):
 
         Examples
         ----------
-        >>> db.find_column("tmp*") # returns all columns prefixed w/ tmp
-        >>> db.find_column("sg_trans*") # returns all columns prefixed w/ sg_trans
-        >>> db.find_column("*trans*") # returns all columns containing trans
-        >>> db.find_column("*trans*", datatype="varchar") # returns all columns containing trans that are varchars
-        >>> db.find_column("*trans*", datatype=["varchar", float8]) # returns all columns that are varchars or float8
-        >>> db.find_column("*") # returns everything
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.find_column("Name") # returns all columns named "Name"
+        +-----------+-------------+---------------+
+        | Table     | Column Name | Type          |
+        +-----------+-------------+---------------+
+        | Artist    |     Name    | NVARCHAR(120) |
+        | Genre     |     Name    | NVARCHAR(120) |
+        | MediaType |     Name    | NVARCHAR(120) |
+        | Playlist  |     Name    | NVARCHAR(120) |
+        | Track     |     Name    | NVARCHAR(200) |
+        +-----------+-------------+---------------+
+        >>> db.find_column("*Id") # returns all columns ending w/ Id
+        +---------------+---------------+---------+
+        | Table         |  Column Name  | Type    |
+        +---------------+---------------+---------+
+        | Album         |    AlbumId    | INTEGER |
+        | Album         |    ArtistId   | INTEGER |
+        | Artist        |    ArtistId   | INTEGER |
+        | Customer      |  SupportRepId | INTEGER |
+        | Customer      |   CustomerId  | INTEGER |
+        | Employee      |   EmployeeId  | INTEGER |
+        | Genre         |    GenreId    | INTEGER |
+        | Invoice       |   InvoiceId   | INTEGER |
+        | Invoice       |   CustomerId  | INTEGER |
+        | InvoiceLine   |   InvoiceId   | INTEGER |
+        | InvoiceLine   |    TrackId    | INTEGER |
+        | InvoiceLine   | InvoiceLineId | INTEGER |
+        | MediaType     |  MediaTypeId  | INTEGER |
+        | Playlist      |   PlaylistId  | INTEGER |
+        | PlaylistTrack |    TrackId    | INTEGER |
+        | PlaylistTrack |   PlaylistId  | INTEGER |
+        | Track         |  MediaTypeId  | INTEGER |
+        | Track         |    TrackId    | INTEGER |
+        | Track         |    AlbumId    | INTEGER |
+        | Track         |    GenreId    | INTEGER |
+        +---------------+---------------+---------+
+        >>> db.find_column("*Address*") # returns all columns containing Address
+        +----------+----------------+--------------+
+        | Table    |  Column Name   | Type         |
+        +----------+----------------+--------------+
+        | Customer |    Address     | NVARCHAR(70) |
+        | Employee |    Address     | NVARCHAR(70) |
+        | Invoice  | BillingAddress | NVARCHAR(70) |
+        +----------+----------------+--------------+
+        >>> db.find_column("*Address*", data_type="NVARCHAR(70)") # returns all columns containing Address that are varchars
+        >>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) # returns all columns have an "e" and are NVARCHAR(70)S or INTEGERS
         """
         if isinstance(data_type, str):
             data_type = [data_type]
@@ -825,7 +868,7 @@ class DB(object):
         # postgres, mysql, & sqlite
         if self.dbtype in ["postgres", "redshift", "sqlite", "mysql"]:
             if limit:
-                q = q.rstrip(";")
+                q = q.rstrip().rstrip(";")
                 q = "select * from (%s) q limit %d" % (q, limit)
             return q
         # mssql
@@ -842,24 +885,99 @@ class DB(object):
         ----------
         q: str
             Query string to execute
+        limit: int
+            Number of records to return
 
         Examples
         --------
-        >>> db.query("SELECT * FROM foo LIMIT 100;")
-        >>> db.query("SELECT name, sum(1) as cnt FROM foo GROUP BY name;")
+        >>> from db import DemoDB
+        >>> db.query("select * from Track")
+           TrackId                                     Name  AlbumId  MediaTypeId  \
+        0        1  For Those About To Rock (We Salute You)        1            1
+        1        2                        Balls to the Wall        2            2
+        2        3                          Fast As a Shark        3            2
+
+           GenreId                                           Composer  Milliseconds  \
+        0        1          Angus Young, Malcolm Young, Brian Johnson        343719
+        1        1                                               None        342562
+        2        1  F. Baltes, S. Kaufman, U. Dirkscneider & W. Ho...        230619
+
+              Bytes  UnitPrice
+        0  11170334       0.99
+        1   5510424       0.99
+        2   3990994       0.99
+        ...
+        >>> db.query("select * from Track", limit=10)
+           TrackId                                     Name  AlbumId  MediaTypeId  \
+        0        1  For Those About To Rock (We Salute You)        1            1
+        1        2                        Balls to the Wall        2            2
+        2        3                          Fast As a Shark        3            2
+        3        4                        Restless and Wild        3            2
+        4        5                     Princess of the Dawn        3            2
+        5        6                    Put The Finger On You        1            1
+        6        7                          Let's Get It Up        1            1
+        7        8                         Inject The Venom        1            1
+        8        9                               Snowballed        1            1
+        9       10                               Evil Walks        1            1
+
+           GenreId                                           Composer  Milliseconds  \
+        0        1          Angus Young, Malcolm Young, Brian Johnson        343719
+        1        1                                               None        342562
+        2        1  F. Baltes, S. Kaufman, U. Dirkscneider & W. Ho...        230619
+        3        1  F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. D...        252051
+        4        1                         Deaffy & R.A. Smith-Diesel        375418
+        5        1          Angus Young, Malcolm Young, Brian Johnson        205662
+        6        1          Angus Young, Malcolm Young, Brian Johnson        233926
+        7        1          Angus Young, Malcolm Young, Brian Johnson        210834
+        8        1          Angus Young, Malcolm Young, Brian Johnson        203102
+        9        1          Angus Young, Malcolm Young, Brian Johnson        263497
+
+              Bytes  UnitPrice
+        0  11170334       0.99
+        1   5510424       0.99
+        2   3990994       0.99
+        3   4331779       0.99
+        4   6290521       0.99
+        5   6713451       0.99
+        6   7636561       0.99
+        7   6852860       0.99
+        8   6599424       0.99
+        9   8611245       0.99
         >>> q = '''
-            SELECT
-                t.name
-                t.zipcode
-                , avg(t.salary)
-                , count(*)
-            FROM
-                leads t
-            GROUP BY
-                t.name
-                , t.zipcode
-            '''
-        >>> lead_stats = db.query(q)
+        SELECT
+          a.Title
+          , t.Name
+          , t.UnitPrice
+        FROM
+          Album a
+        INNER JOIN
+          Track t
+            on a.AlbumId = t.AlbumId;
+        '''
+        >>> db.query(q, limit=10)
+                                           Title  \
+        0  For Those About To Rock We Salute You
+        1                      Balls to the Wall
+        2                      Restless and Wild
+        3                      Restless and Wild
+        4                      Restless and Wild
+        5  For Those About To Rock We Salute You
+        6  For Those About To Rock We Salute You
+        7  For Those About To Rock We Salute You
+        8  For Those About To Rock We Salute You
+        9  For Those About To Rock We Salute You
+
+                                              Name  UnitPrice
+        0  For Those About To Rock (We Salute You)       0.99
+        1                        Balls to the Wall       0.99
+        2                          Fast As a Shark       0.99
+        3                        Restless and Wild       0.99
+        4                     Princess of the Dawn       0.99
+        5                    Put The Finger On You       0.99
+        6                          Let's Get It Up       0.99
+        7                         Inject The Venom       0.99
+        8                               Snowballed       0.99
+        9                               Evil Walks       0.99
         """
         if limit==False:
             pass
@@ -878,7 +996,45 @@ class DB(object):
 
         Examples
         --------
-        >>> db.query_from_file("myscript.sql")
+        >>> from db import DemoDB
+        >>> q = '''
+        SELECT
+          a.Title
+          , t.Name
+          , t.UnitPrice
+        FROM
+          Album a
+        INNER JOIN
+          Track t
+            on a.AlbumId = t.AlbumId;
+        '''
+        >>> with open("myscript.sql", "w") as f:
+        ...    f.write(q)
+        ...
+        >>> db.query_from_file(q, limit=10)
+                                           Title  \
+        0  For Those About To Rock We Salute You
+        1                      Balls to the Wall
+        2                      Restless and Wild
+        3                      Restless and Wild
+        4                      Restless and Wild
+        5  For Those About To Rock We Salute You
+        6  For Those About To Rock We Salute You
+        7  For Those About To Rock We Salute You
+        8  For Those About To Rock We Salute You
+        9  For Those About To Rock We Salute You
+
+                                              Name  UnitPrice
+        0  For Those About To Rock (We Salute You)       0.99
+        1                        Balls to the Wall       0.99
+        2                          Fast As a Shark       0.99
+        3                        Restless and Wild       0.99
+        4                     Princess of the Dawn       0.99
+        5                    Put The Finger On You       0.99
+        6                          Let's Get It Up       0.99
+        7                         Inject The Venom       0.99
+        8                               Snowballed       0.99
+        9                               Evil Walks       0.99
         """
         return self.query(open(filename).read(), limit)
 
@@ -889,14 +1045,14 @@ class DB(object):
         for table in tables:
             for row in self.cur.execute("pragma table_info(%s)" % table):
                 rows_to_insert.append((table, row[1], row[2]))
-        # grep for table and column names
+        # find for table and column names
         self.cur.execute("drop table if exists tmp_dbpy_schema;")
         self.cur.execute("create temp table tmp_dbpy_schema(table_name varchar, column_name varchar, data_type varchar);")
         for row in rows_to_insert:
             self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
         self.cur.execute("SELECT name, sql  FROM sqlite_master where sql like '%REFERENCES%';")
-        # grep for foreign keys
 
+        # find for foreign keys
         self.cur.execute("drop table if exists tmp_dbpy_foreign_keys;")
         self.cur.execute("create temp table tmp_dbpy_foreign_keys(table_name varchar, column_name varchar, foreign_table varchar, foreign_column varchar);")
         foreign_keys = []
@@ -935,46 +1091,6 @@ class DB(object):
             tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type))
 
         self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
-
-    def to_redshift(self, df, table, bucket_name=None, AWS_ACCESS_KEY=None,
-                    AWS_SECRET_KEY=None):
-        """
-        Uploads a data.frame to redshift
-        """
-        from boto.s3.connection import S3Connection
-        from boto.s3.key import Key
-        from filechunkio import FileChunkIO
-
-        conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
-        if bucket_name:
-            bucket = conn.create_bucket(bucket_name)
-        else:
-            bucket = conn.create_bucket("dbpy-" + str(uuid.uuid4()))
-        # Get file info
-        source_path = 'path/to/your/file.ext'
-        source_size = os.stat(source_path).st_size
-
-        # Create a multipart upload request
-        mp = bucket.initiate_multipart_upload(os.path.basename(source_path))
-
-        # Use a chunk size of 50 MiB (feel free to change this)
-        chunk_size = 52428800
-        chunk_count = int(math.ceil(source_size / chunk_size))
-
-        # Send the file parts, using FileChunkIO to create a file-like object
-        # that points to a certain byte range within the original file. We
-        # set bytes to never exceed the original file size.
-        for i in range(chunk_count + 1):
-            offset = chunk_size * i
-            bytes = min(chunk_size, source_size - offset)
-            with FileChunkIO(source_path, 'r', offset=offset,
-                                 bytes=bytes) as fp:
-                mp.upload_part_from_file(fp, part_num=i + 1)
-
-        # Finish the upload
-        mp.complete_upload()
-
-        # TODO: \COPY from <boto> to <database>
 
 
 def list_profiles(self):
