@@ -340,7 +340,7 @@ __Arguments__
 >>> results = db.find_column("tmp*") # returns all columns prefixed w/ tmp
 >>> results = db.find_column("*trans*") # returns all columns containing trans
 >>> results = db.find_column("*trans*", datatype="varchar") # returns all columns containing trans that are varchars
->>> results = db.find_column("*trans*", datatype=["varchar", float8]) # returns all columns that are varchars or float8
+>>> results = db.find_column("*trans*", datatype=["varchar", "float8"]) # returns all columns that are varchars or float8
 >>> results = db.find_column("*") # returns everything
 ```
 

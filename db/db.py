@@ -1,4 +1,3 @@
-from collections import namedtuple
 import glob
 import uuid
 import json
@@ -599,6 +598,11 @@ class DB(object):
         Name of the database
     profile: str
         Preconfigured database credentials / profile for how you like your queries
+    exclude_system_tables: bool
+        Whether or not to include "system" tables (the ones that the database needs
+        in order to operate). This includes things like schema definitions. Most of
+        you probably don't need this, but if you're a db admin you might actually
+        want to query the system tables.
     limit: int, None
         Default number of records to return in a query. This is used by the DB.query
         method. You can override it by adding limit={X} to the `query` method, or
