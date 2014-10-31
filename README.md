@@ -358,9 +358,9 @@ __Arguments__
 - [ ] push to Redshift
 - [ ] "joins to" for columns
     - [x] postgres
-    - [ ] sqlite
+    - [x] sqlite
     - [x] redshift
-    - [ ] mysql
+    - [x] mysql
     - [ ] mssql
 - [ ] patsy formulas
 - [x] profile w/ limit

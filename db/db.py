@@ -4,6 +4,7 @@ import uuid
 import json
 import base64
 import math
+import re
 import os
 import sys
 
@@ -51,8 +52,8 @@ class Column(object):
     execute simple queries.
     """
     def __init__(self, con, query_templates, table, name, dtype):
-        self.con = con
-        self.query_templates = query_templates
+        self._con = con
+        self._query_templates = query_templates
         self.table = table
         self.name = name
         self.type = dtype
@@ -66,6 +67,9 @@ class Column(object):
         tbl.add_row([self.table, self.name, self.type, self._str_foreign_keys(),
                      self._str_ref_keys()])
         return str(tbl)
+
+    def __str__(self):
+        return "Column(%s)<%d>" % (self.name, self.__hash__())
 
     def _repr_html_(self):
         tbl = PrettyTable(["Table", "Name", "Type"])
@@ -98,9 +102,25 @@ class Column(object):
         n: int
             number of rows to return
 
+        Examples
+        --------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.tables.Customer.City.head()
+        0    Sao Jose dos Campos
+        1              Stuttgart
+        2               Montreal
+        3                   Oslo
+        4                 Prague
+        5                 Prague
+        Name: City, dtype: object
+        >>> db.tables.Customer.City.head(2)
+        0    Sao Jose dos Campos
+        1              Stuttgart
+        Name: City, dtype: object
         """
-        q = self.query_templates['column']['head'] % (self.name, self.table, n)
-        return pd.io.sql.read_sql(q, self.con)[self.name]
+        q = self._query_templates['column']['head'] % (self.name, self.table, n)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def all(self):
         """
@@ -110,9 +130,31 @@ class Column(object):
                     <name_of_the_column>
             FROM
                 <name_of_the_table>
+
+        Examples
+        --------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.tables.Customer.Email.all()
+        0              luisg@embraer.com.br
+        1             leonekohler@surfeu.de
+        2               ftremblay@gmail.com
+        3             bjorn.hansen@yahoo.no
+        4          frantisekw@jetbrains.com
+        5                   hholy@gmail.com
+        6            astrid.gruber@apple.at
+        7             daan_peeters@apple.be
+        8             kara.nielsen@jubii.dk
+        9          eduardo@woodstock.com.br
+        10                 alero@uol.com.br
+        11    roberto.almeida@riotur.gov.br
+        ...
+        >>> df = db.tables.Customer.Email.all()
+        >>> len(df)
+            59
         """
-        q = self.query_templates['column']['all'] % (self.name, self.table)
-        return pd.io.sql.read_sql(q, self.con)[self.name]
+        q = self._query_templates['column']['all'] % (self.name, self.table)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def unique(self):
         """
@@ -122,9 +164,28 @@ class Column(object):
                     <name_of_the_column>
             FROM
                 <name_of_the_table>
+
+        Examples
+        --------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.tables.Customer.FirstName.unique()
+        0          Luis
+        1        Leonie
+        2      Francois
+        3         Bjorn
+        4     Frantisek
+        5        Helena
+        6        Astrid
+        7          Daan
+        8          Kara
+        9       Eduardo
+        10    Alexandre
+        ...
+        >>> len(db.tables.Customer.LastName.unique())
         """
-        q = self.query_templates['column']['unique'] % (self.name, self.table)
-        return pd.io.sql.read_sql(q, self.con)[self.name]
+        q = self._query_templates['column']['unique'] % (self.name, self.table)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def sample(self, n=10):
         """
@@ -141,9 +202,26 @@ class Column(object):
         ----------
         n: int
             number of rows to sample
+
+        Examples
+        --------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.tables.Artist.Name.sample(10)
+        0                     Julian Bream
+        1                         Godsmack
+        2                             Lost
+        3                         Fretwork
+        4            Pedro Luis E A Parede
+        5            Philip Glass Ensemble
+        6                      Marvin Gaye
+        7                        Metallica
+        8                Alanis Morissette
+        9    Santana Feat. The Project G&B
+        Name: Name, dtype: object
         """
-        q = self.query_templates['column']['sample'] % (self.name, self.table, n)
-        return pd.io.sql.read_sql(q, self.con)[self.name]
+        q = self._query_templates['column']['sample'] % (self.name, self.table, n)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
 class Table(object):
     """
@@ -152,9 +230,9 @@ class Table(object):
     """
     def __init__(self, con, query_templates, name, cols):
         self.name = name
-        self.con = con
-        self.cur = con.cursor()
-        self.query_templates = query_templates
+        self._con = con
+        self._cur = con.cursor()
+        self._query_templates = query_templates
         self.foreign_keys = []
         self.ref_keys = []
 
@@ -165,21 +243,25 @@ class Table(object):
                 attr = "_" + col.name
             setattr(self, attr, col)
 
-        self.cur.execute(self.query_templates['system']['foreign_keys_for_table'] % (self.name))
-        for (column_name, foreign_table, foreign_column) in self.cur:
+        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'] % (self.name))
+        for (column_name, foreign_table, foreign_column) in self._cur:
             col = getattr(self, column_name)
             foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type)
             self.foreign_keys.append(foreign_key)
             col.foreign_keys.append(foreign_key)
             setattr(self, column_name, col)
 
-        self.cur.execute(self.query_templates['system']['ref_keys_for_table'] % (self.name))
-        for (column_name, ref_table, ref_column) in self.cur:
+        self.foreign_keys = ColumnSet(self.foreign_keys)
+
+        self._cur.execute(self._query_templates['system']['ref_keys_for_table'] % (self.name))
+        for (column_name, ref_table, ref_column) in self._cur:
             col = getattr(self, column_name)
             ref_key = Column(con, queries_templates, ref_table, ref_column, col.type)
             self.ref_keys.append(ref_key)
             col.ref_keys.append(ref_key)
             setattr(self, column_name, col)
+
+        self.ref_keys = ColumnSet(self.ref_keys)
 
     def _tablify(self):
         tbl = PrettyTable(["Column", "Type", "Foreign Keys", "Reference Keys"])
@@ -197,6 +279,9 @@ class Table(object):
         brk = "+" + "-"*(len(r)-2) + "+"
         title = "|" + self.name.center(len(r)-2) + "|"
         return brk + "\n" + title + "\n" + tbl
+
+    def __str__(self):
+        return "Table(%s)<%d>" % (self.name, self.__hash__())
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
@@ -219,11 +304,27 @@ class Table(object):
 
         Examples
         --------
-        >>> db.people.select("name") # select name from people table
-        >>> db.people.select("name", "age") # select name and age from people table
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        # select name from the Track table
+        >>> db.tables.Track.select("Name")
+                                                           Name
+        0               For Those About To Rock (We Salute You)
+        1                                     Balls to the Wall
+        2                                       Fast As a Shark
+        3                                     Restless and Wild
+        4                                  Princess of the Dawn
+        5                                 Put The Finger On You
+        6                                       Let's Get It Up
+        7                                      Inject The Venom
+        8                                            Snowballed
+        9                                            Evil Walks
+        ...
+        # select name & composer from the Track table
+        >>> df = db.tables.Track.select("Name", "Composer")
         """
-        q = self.query_templates['table']['select'] % (", ".join(args), self.name)
-        return pd.io.sql.read_sql(q, self.con)
+        q = self._query_templates['table']['select'] % (", ".join(args), self.name)
+        return pd.io.sql.read_sql(q, self._con)
 
     def head(self, n=6):
         """
@@ -238,9 +339,48 @@ class Table(object):
         ----------
         n: int
             number of rows to return
+
+        Examples
+        --------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        # select name from the Track table
+        >>> db.tables.Track.head()
+           TrackId                                     Name  AlbumId  MediaTypeId  \
+        0        1  For Those About To Rock (We Salute You)        1            1
+        1        2                        Balls to the Wall        2            2
+        2        3                          Fast As a Shark        3            2
+        3        4                        Restless and Wild        3            2
+        4        5                     Princess of the Dawn        3            2
+        5        6                    Put The Finger On You        1            1
+
+           GenreId                                           Composer  Milliseconds  \
+        0        1          Angus Young, Malcolm Young, Brian Johnson        343719
+        1        1                                               None        342562
+        2        1  F. Baltes, S. Kaufman, U. Dirkscneider & W. Ho...        230619
+        3        1  F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. D...        252051
+        4        1                         Deaffy & R.A. Smith-Diesel        375418
+        5        1          Angus Young, Malcolm Young, Brian Johnson        205662
+
+              Bytes  UnitPrice
+        0  11170334       0.99
+        1   5510424       0.99
+        2   3990994       0.99
+        3   4331779       0.99
+        4   6290521       0.99
+        5   6713451       0.99
+        >>> db.tables.Track.head(1)
+           TrackId                                     Name  AlbumId  MediaTypeId  \
+        0        1  For Those About To Rock (We Salute You)        1            1
+
+           GenreId                                   Composer  Milliseconds     Bytes  \
+        0        1  Angus Young, Malcolm Young, Brian Johnson        343719  11170334
+
+           UnitPrice
+        0       0.99
         """
-        q = self.query_templates['table']['head'] % (self.name, n)
-        return pd.io.sql.read_sql(q, self.con)
+        q = self._query_templates['table']['head'] % (self.name, n)
+        return pd.io.sql.read_sql(q, self._con)
 
     def all(self):
         """
@@ -249,10 +389,18 @@ class Table(object):
                 *
             FROM
                 <name_of_the_table>
+
+        Examples
+        --------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> len(db.tables.Track.all())
+            3503
+        >>> df = db.tables.Track.all()
         """
 
-        q = self.query_templates['table']['all'] % (self.name)
-        return pd.io.sql.read_sql(q, self.con)
+        q = self._query_templates['table']['all'] % (self.name)
+        return pd.io.sql.read_sql(q, self._con)
 
     def unique(self, *args):
         """
@@ -272,16 +420,44 @@ class Table(object):
 
         Examples
         --------
-        >>> db.people.unique("name")
-        >>> db.people.unique("name", "age")
-        >>> db.people.unique("name", "age", "zipcode")
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.tables.Track.unique("GenreId")
+                GenreId
+            0         1
+            1         2
+            2         3
+            3         4
+            4         5
+            5         6
+            6         7
+            7         8
+            8         9
+            9        10
+            10       11
+            11       12
+            12       13
+            13       14
+            14       15
+            15       16
+            16       17
+            17       18
+            18       19
+            19       20
+            20       21
+            21       22
+            22       23
+            23       24
+            24       25
+        >>> len(db.tables.Track.unique("GenreId", "MediaTypeId"))
+            38
         """
         if len(args)==0:
             columns = "*"
         else:
             columns = ", ".join(args)
-        q = self.query_templates['table']['unique'] % (columns, self.name)
-        return pd.io.sql.read_sql(q, self.con)
+        q = self._query_templates['table']['unique'] % (columns, self.name)
+        return pd.io.sql.read_sql(q, self._con)
 
     def sample(self, n=10):
         """
@@ -298,9 +474,50 @@ class Table(object):
         ----------
         n: int
             number of rows to sample
+
+        Examples
+        --------
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.tables.Track.sample(10)
+           TrackId                                               Name  AlbumId  \
+        0      274                                      Samba Makossa       25
+        1     1971                                Girls, Girls, Girls      162
+        2      843                                               Otay       68
+        3     3498  Concerto for Violin, Strings and Continuo in G...      342
+        4     3004                        Pride (In The Name Of Love)      238
+        5     2938                                      Beautiful Day      233
+        6     2023                          O Braco Da Minha Guitarra      165
+        7     1920                                            Caxanga      158
+        8     3037                                       The Wanderer      240
+        9     1487                           Third Stone From The Sun      120
+
+           MediaTypeId  GenreId                                           Composer  \
+        0            1        7                                               None
+        1            1        3                     Mick Mars/Nikki Sixx/Tommy Lee
+        2            1        2  John Scofield, Robert Aries, Milton Chambers a...
+        3            4       24                           Pietro Antonio Locatelli
+        4            1        1                                                 U2
+        5            1        1         Adam Clayton, Bono, Larry Mullen, The Edge
+        6            1        1                                               None
+        7            1        7                  Milton Nascimento, Fernando Brant
+        8            1        1                                           U2; Bono
+        9            1        1                                       Jimi Hendrix
+
+           Milliseconds     Bytes  UnitPrice
+        0        271856   9095410       0.99
+        1        270288   8874814       0.99
+        2        423653  14176083       0.99
+        3        493573  16454937       0.99
+        4        230243   7549085       0.99
+        5        248163   8056723       0.99
+        6        258351   8469531       0.99
+        7        245551   8144179       0.99
+        8        283951   9258717       0.99
+        9        404453  13186975       0.99
         """
-        q = self.query_templates['table']['sample'] % (self.name, n)
-        return pd.io.sql.read_sql(q, self.con)
+        q = self._query_templates['table']['sample'] % (self.name, n)
+        return pd.io.sql.read_sql(q, self._con)
 
 
 class TableSet(object):
@@ -382,11 +599,39 @@ class DB(object):
         Name of the database
     profile: str
         Preconfigured database credentials / profile for how you like your queries
+    limit: int, None
+        Default number of records to return in a query. This is used by the DB.query
+        method. You can override it by adding limit={X} to the `query` method, or
+        by passing an argument to `DB()`. None indicates that there will be no
+        limit (That's right, you'll be limitless. Bradley Cooper style.)
+
+    Examples
+    --------
+    >>> from db import DB
+    >>> db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com",
+                port=5432, dbname="muppets", dbtype="postgres")
+    >>> db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131",
+                port=5432, dbname="muppets_redshift", dbtype="redshift")
+    >>> db = DB(username="dev", hostname="localhost",
+                port=5432, dbname="devdb", dbtype="postgres")
+    >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
+    >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
     """
     def __init__(self, username=None, password=None, hostname="localhost",
-            port=5432, filename=None, dbname=None, dbtype=None, profile="default",
+            port=None, filename=None, dbname=None, dbtype=None, profile="default",
             exclude_system_tables=True, limit=1000):
 
+        if port is None:
+            if dbtype in ("postgres", "redshift"):
+                port = 5432
+            elif dbtype=="mysql":
+                port = 3306
+            elif dbtype=="sqlite":
+                port = None
+            elif dbtype=="mssql":
+                port = None
+            else:
+                raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
         if dbtype!="sqlite" and username is None and password is None and hostname=="localhost" and port==5432 and dbname is None:
             self.load_credentials(profile)
@@ -404,7 +649,7 @@ class DB(object):
 
         if self.dbtype is None:
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
-        self.query_templates = queries_templates.get(self.dbtype).queries
+        self._query_templates = queries_templates.get(self.dbtype).queries
 
         if dbtype=="postgres" or dbtype=="redshift":
             self.con = pg.connect(user=self.username, password=self.password,
@@ -437,15 +682,29 @@ class DB(object):
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
 
-    def __repr__(self):
+    def __str__(self):
         return "DB[{dbtype}][{hostname}]:{port} > {user}@{dbname}".format(
             dbtype=self.dbtype, hostname=self.hostname, port=self.port, user=self.username, dbname=self.dbname)
+
+    def __repr__(self):
+        return self.__str__()
 
     def __delete__(self):
         del self.cur
         del self.con
 
     def load_credentials(self, profile="default"):
+        """
+        Loads crentials for a given profile. Profiles are stored in
+        ~/.db.py_{profile_name} and are a base64 encoded JSON file. This is not
+        to say this a secure way to store sensitive data, but it will probably
+        stop your little sister from stealing your passwords.
+
+        Parameters
+        ----------
+        profile: str
+            (optional) identifier/name for your database (i.e. "dw", "prod")
+        """
         user = os.path.expanduser("~")
         f = os.path.join(user, ".db.py_" + profile)
         if os.path.exists(f):
@@ -468,7 +727,7 @@ class DB(object):
         Parameters
         ----------
         profile: str
-            (optional) name for your database
+            (optional) identifier/name for your database (i.e. "dw", "prod")
 
         >>> db = DB(username="hank", password="foo",
         >>>         hostname="prod.mardukas.com", dbname="bar")
@@ -494,8 +753,8 @@ class DB(object):
             "dbname": self.dbname,
             "limit": self.limit,
         }
-        with open(f, 'wb') as cfile:
-            cfile.write(base64.encodestring(json.dumps(creds)))
+        with open(f, 'wb') as credentials_file:
+            credentials_file.write(base64.encodestring(json.dumps(creds)))
 
     def find_table(self, search):
         """
@@ -508,6 +767,13 @@ class DB(object):
 
         Examples
         ----------
+        >>> db.find_table("A*")
+            +--------+--------------------------+
+            | Table  | Columns                  |
+            +--------+--------------------------+
+            | Album  | AlbumId, Title, ArtistId |
+            | Artist | ArtistId, Name           |
+            +--------+--------------------------+
         >>> db.find_table("tmp*") # returns all tables prefixed w/ tmp
         >>> db.find_table("sg_trans*") # returns all tables prefixed w/ sg_trans
         >>> db.find_table("*trans*") # returns all tables containing trans
@@ -619,10 +885,28 @@ class DB(object):
         for table in tables:
             for row in self.cur.execute("pragma table_info(%s)" % table):
                 rows_to_insert.append((table, row[1], row[2]))
+        # grep for table and column names
         self.cur.execute("drop table if exists tmp_dbpy_schema;")
         self.cur.execute("create temp table tmp_dbpy_schema(table_name varchar, column_name varchar, data_type varchar);")
         for row in rows_to_insert:
             self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
+        self.cur.execute("SELECT name, sql  FROM sqlite_master where sql like '%REFERENCES%';")
+        # grep for foreign keys
+
+        self.cur.execute("drop table if exists tmp_dbpy_foreign_keys;")
+        self.cur.execute("create temp table tmp_dbpy_foreign_keys(table_name varchar, column_name varchar, foreign_table varchar, foreign_column varchar);")
+        foreign_keys = []
+        self.cur.execute("SELECT name, sql  FROM sqlite_master ;")
+        for (table_name, sql) in self.cur:
+            rgx = "FOREIGN KEY \(\[(.*)\]\) REFERENCES \[(.*)\] \(\[(.*)\]\)"
+            if sql is None:
+                continue
+            for (column_name, foreign_table, foreign_key) in re.findall(rgx, sql):
+                foreign_keys.append((table_name, column_name, foreign_table, foreign_key))
+        for row in foreign_keys:
+            sql_insert = "insert into tmp_dbpy_foreign_keys(table_name, column_name, foreign_table, foreign_column) values('%s', '%s', '%s', '%s');"
+            self.cur.execute(sql_insert % row)
+
         self.con.commit()
         sys.stderr.write("finished!\n")
 
@@ -633,9 +917,9 @@ class DB(object):
         """
 
         if exclude_system_tables==True:
-            q = self.query_templates['system']['schema_no_system']
+            q = self._query_templates['system']['schema_no_system']
         else:
-            q = self.query_templates['system']['schema_with_system']
+            q = self._query_templates['system']['schema_with_system']
 
         tables = set()
         self.cur.execute(q)
@@ -644,9 +928,9 @@ class DB(object):
         for (table_name, column_name, data_type)in self.cur:
             if table_name not in tables:
                 tables[table_name] = []
-            tables[table_name].append(Column(self.con, self.query_templates, table_name, column_name, data_type))
+            tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type))
 
-        self.tables = TableSet([Table(self.con, self.query_templates, t, tables[t]) for t in sorted(tables.keys())])
+        self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
 
     def to_redshift(self, df, table, bucket_name=None, AWS_ACCESS_KEY=None,
                     AWS_SECRET_KEY=None):
@@ -689,12 +973,22 @@ class DB(object):
         # TODO: \COPY from <boto> to <database>
 
 
-    def list_profiles(self):
-        user = os.path.expanduser("~")
-        for f in os.listdir(user):
-            if f.startswith(".db.py_"):
-                profile = os.path.join(user, f)
-                yield base64.decodestring(open(profile).read())
+def list_profiles(self):
+    """
+    Lists all of the database profiles available
+
+    Examples
+    --------
+    >>> from db import list_profiles
+    >>> list_profiles()
+    """
+    profiles = []
+    user = os.path.expanduser("~")
+    for f in os.listdir(user):
+        if f.startswith(".db.py_"):
+            profile = os.path.join(user, f)
+            profiles.append(base64.decodestring(open(profile).read()))
+    return profiles
 
 
 def DemoDB():

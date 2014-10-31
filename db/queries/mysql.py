@@ -21,7 +21,7 @@ queries = {
                 from
                     information_schema.columns
                 where
-                    table_schema != 'information_schema'
+                    table_schema not in ('information_schema', 'performance_schema', 'mysql')
                 """,
         "schema_with_system": """
                 select
@@ -30,6 +30,40 @@ queries = {
                     , data_type
                 from
                     information_schema.columns;
-                """
+                """,
+        "foreign_keys_for_table": """
+        select
+            column_name
+            , referenced_table_name
+            , referenced_column_name
+        from
+            information_schema.key_column_usage
+        where
+            table_name = '%s'
+            and referenced_column_name IS NOT NULL;
+        """,
+        "foreign_keys_for_column": """
+        select
+            column_name
+            , referenced_table_name
+            , referenced_column_name
+        from
+            information_schema.key_column_usage
+        where
+            table_name = '%s'
+            and column_name = '%s'
+            and referenced_column_name IS NOT NULL;
+        """,
+        "ref_keys_for_table": """
+            select
+                referenced_column_name
+                , table_name
+                , column_name
+            from
+                information_schema.key_column_usage
+            where
+                referenced_table_name = '%s'
+                and referenced_column_name IS NOT NULL;
+        """
     }
 }
