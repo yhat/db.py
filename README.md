@@ -1,5 +1,4 @@
 # db.py
-[demo](http://nbviewer.ipython.org/gist/glamp/3fa8032499b6db007f0f)
 
 ## What is it?
 `db.py` is an easier way to interact with your databases. It makes it easier to explore tables, columns, views, etc. It puts the emphasis on user interaction, information display, and providing easy to use helper functions.
@@ -96,6 +95,7 @@ Search your schema
 | Track         |    GenreId    | INTEGER |
 +---------------+---------------+---------+
 ```
+[IPython Notebook](http://nbviewer.ipython.org/gist/glamp/3fa8032499b6db007f0f) friendly
 
 ## Quickstart
 
