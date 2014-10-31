@@ -29,21 +29,15 @@ db.tables.Artist         db.tables.Employee       db.tables.Invoice        db.ta
 Friendly displays
 ```python
 >>> db.tables.Track
-+------------------------------+
-|            Track             |
-+--------------+---------------+
-| Column       | Type          |
-+--------------+---------------+
-| TrackId      | INTEGER       |
-| Name         | NVARCHAR(200) |
-| AlbumId      | INTEGER       |
-| MediaTypeId  | INTEGER       |
-| GenreId      | INTEGER       |
-| Composer     | NVARCHAR(220) |
-| Milliseconds | INTEGER       |
-| Bytes        | INTEGER       |
-| UnitPrice    | NUMERIC(10,2) |
-+--------------+---------------+
++-------------------------------------------------------------+
+|                            Album                            |
++----------+---------------+-----------------+----------------+
+| Column   | Type          | Foreign Keys    | Reference Keys |
++----------+---------------+-----------------+----------------+
+| AlbumId  | INTEGER       |                 | Track.AlbumId  |
+| Title    | NVARCHAR(160) |                 |                |
+| ArtistId | INTEGER       | Artist.ArtistId |                |
++----------+---------------+-----------------+----------------+
 ```
 
 Directly integrated with `pandas`
@@ -135,25 +129,25 @@ $ pip install db.py
 |               | tPrice                                                                           |
 +---------------+----------------------------------------------------------------------------------+
 >>> db.tables.Customer
-+-----------------------------+
-|           Customer          |
-+--------------+--------------+
-| Column       | Type         |
-+--------------+--------------+
-| CustomerId   | INTEGER      |
-| FirstName    | NVARCHAR(40) |
-| LastName     | NVARCHAR(20) |
-| Company      | NVARCHAR(80) |
-| Address      | NVARCHAR(70) |
-| City         | NVARCHAR(40) |
-| State        | NVARCHAR(40) |
-| Country      | NVARCHAR(40) |
-| PostalCode   | NVARCHAR(10) |
-| Phone        | NVARCHAR(24) |
-| Fax          | NVARCHAR(24) |
-| Email        | NVARCHAR(60) |
-| SupportRepId | INTEGER      |
-+--------------+--------------+
++------------------------------------------------------------------------+
+|                                Customer                                |
++--------------+--------------+---------------------+--------------------+
+| Column       | Type         | Foreign Keys        | Reference Keys     |
++--------------+--------------+---------------------+--------------------+
+| CustomerId   | INTEGER      |                     | Invoice.CustomerId |
+| FirstName    | NVARCHAR(40) |                     |                    |
+| LastName     | NVARCHAR(20) |                     |                    |
+| Company      | NVARCHAR(80) |                     |                    |
+| Address      | NVARCHAR(70) |                     |                    |
+| City         | NVARCHAR(40) |                     |                    |
+| State        | NVARCHAR(40) |                     |                    |
+| Country      | NVARCHAR(40) |                     |                    |
+| PostalCode   | NVARCHAR(10) |                     |                    |
+| Phone        | NVARCHAR(24) |                     |                    |
+| Fax          | NVARCHAR(24) |                     |                    |
+| Email        | NVARCHAR(60) |                     |                    |
+| SupportRepId | INTEGER      | Employee.EmployeeId |                    |
++--------------+--------------+---------------------+--------------------+
 >>> db.tables.Customer.sample()
    CustomerId  FirstName    LastName  \
 0           4      Bjørn      Hansen
@@ -284,6 +278,29 @@ __Arguments__
 >>> db = DB() # this loads "default" profile
 >>> db = DB(profile="local_pg")
 ```
+#### List your profiles
+```python
+>>> from db import list_profiles
+>>> list_profiles()
+{'demo': {u'dbname': None,
+  u'dbtype': u'sqlite',
+  u'filename': u'/Users/glamp/repos/yhat/opensource/db.py/db/data/chinook.sqlite',
+  u'hostname': u'localhost',
+  u'password': None,
+  u'port': 5432,
+  u'username': None},
+ 'muppets': {u'dbname': u'muppetdb',
+  u'dbtype': u'postgres',
+  u'filename': None,
+  u'hostname': u'muppets.yhathq.com',
+  u'password': None,
+  u'port': 5432,
+  u'username': u'kermit'}}
+```
+#### Remove a profile
+```python
+>>> remove_profile('demo')
+```
 ### Executing Queries
 #### From a string
 ```python
@@ -312,7 +329,17 @@ __Arguments__
 ```
 #### Columns
 ```python
->>> db.find_column("*Id*")
+>>> db.find_column("Name") # returns all columns named "Name"
++-----------+-------------+---------------+
+| Table     | Column Name | Type          |
++-----------+-------------+---------------+
+| Artist    |     Name    | NVARCHAR(120) |
+| Genre     |     Name    | NVARCHAR(120) |
+| MediaType |     Name    | NVARCHAR(120) |
+| Playlist  |     Name    | NVARCHAR(120) |
+| Track     |     Name    | NVARCHAR(200) |
++-----------+-------------+---------------+
+>>> db.find_column("*Id") # returns all columns ending w/ Id
 +---------------+---------------+---------+
 | Table         |  Column Name  | Type    |
 +---------------+---------------+---------+
@@ -337,11 +364,16 @@ __Arguments__
 | Track         |    AlbumId    | INTEGER |
 | Track         |    GenreId    | INTEGER |
 +---------------+---------------+---------+
->>> results = db.find_column("tmp*") # returns all columns prefixed w/ tmp
->>> results = db.find_column("*trans*") # returns all columns containing trans
->>> results = db.find_column("*trans*", datatype="varchar") # returns all columns containing trans that are varchars
->>> results = db.find_column("*trans*", datatype=["varchar", "float8"]) # returns all columns that are varchars or float8
->>> results = db.find_column("*") # returns everything
+>>> db.find_column("*Address*") # returns all columns containing Address
++----------+----------------+--------------+
+| Table    |  Column Name   | Type         |
++----------+----------------+--------------+
+| Customer |    Address     | NVARCHAR(70) |
+| Employee |    Address     | NVARCHAR(70) |
+| Invoice  | BillingAddress | NVARCHAR(70) |
++----------+----------------+--------------+
+>>> db.find_column("*Address*", data_type="NVARCHAR(70)") # returns all columns containing Address that are varchars
+>>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) # returns all columns have an "e" and are NVARCHAR/INTEGERS
 ```
 
 ## TODO
