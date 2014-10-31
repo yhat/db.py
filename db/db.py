@@ -1,7 +1,9 @@
 from collections import namedtuple
 import glob
+import uuid
 import json
 import base64
+import math
 import os
 import sys
 
@@ -44,8 +46,8 @@ except:
 
 class Column(object):
     """
-    A Columns is an in-memory reference to a column in a particular table. You 
-    can use it to do some basic DB exploration and you can also use it to 
+    A Columns is an in-memory reference to a column in a particular table. You
+    can use it to do some basic DB exploration and you can also use it to
     execute simple queries.
     """
     def __init__(self, con, query_templates, table, name, dtype):
@@ -55,16 +57,33 @@ class Column(object):
         self.name = name
         self.type = dtype
 
+        self.foreign_keys = []
+        self.ref_keys = []
+
     def __repr__(self):
-        tbl = PrettyTable(["Table", "Name", "Type"])
-        tbl.add_row([self.table, self.name, self.type])
+        tbl = PrettyTable(["Table", "Name", "Type", "Foreign Keys",
+                           "Reference Keys"])
+        tbl.add_row([self.table, self.name, self.type, self._str_foreign_keys(),
+                     self._str_ref_keys()])
         return str(tbl)
 
     def _repr_html_(self):
         tbl = PrettyTable(["Table", "Name", "Type"])
         tbl.add_row([self.table, self.name, self.type])
         return tbl.get_html_string()
-    
+
+    def _str_foreign_keys(self):
+        keys = []
+        for col in self.foreign_keys:
+            keys.append("%s.%s" % (col.table, col.name))
+        return ", ".join(keys)
+
+    def _str_ref_keys(self):
+        keys = []
+        for col in self.ref_keys:
+            keys.append("%s.%s" % (col.table, col.name))
+        return ", ".join(keys)
+
     def head(self, n=6):
         """
         Returns first n values of your column as a DataFrame. This is executing:
@@ -73,7 +92,7 @@ class Column(object):
             FROM
                 <name_of_the_table>
             LIMIT <n>
-        
+
         Parameters
         ----------
         n: int
@@ -134,33 +153,53 @@ class Table(object):
     def __init__(self, con, query_templates, name, cols):
         self.name = name
         self.con = con
+        self.cur = con.cursor()
         self.query_templates = query_templates
+        self.foreign_keys = []
+        self.ref_keys = []
+
         self._columns = cols
         for col in cols:
             attr = col.name
             if attr in ("name", "con"):
                 attr = "_" + col.name
             setattr(self, attr, col)
-    
-    def __repr__(self):
-        tbl = PrettyTable(["Column", "Type"])
+
+        self.cur.execute(self.query_templates['system']['foreign_keys_for_table'] % (self.name))
+        for (column_name, foreign_table, foreign_column) in self.cur:
+            col = getattr(self, column_name)
+            foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type)
+            self.foreign_keys.append(foreign_key)
+            col.foreign_keys.append(foreign_key)
+            setattr(self, column_name, col)
+
+        self.cur.execute(self.query_templates['system']['ref_keys_for_table'] % (self.name))
+        for (column_name, ref_table, ref_column) in self.cur:
+            col = getattr(self, column_name)
+            ref_key = Column(con, queries_templates, ref_table, ref_column, col.type)
+            self.ref_keys.append(ref_key)
+            col.ref_keys.append(ref_key)
+            setattr(self, column_name, col)
+
+    def _tablify(self):
+        tbl = PrettyTable(["Column", "Type", "Foreign Keys", "Reference Keys"])
         tbl.align["Column"] = "l"
         tbl.align["Type"] = "l"
+        tbl.align["Foreign Keys"] = "l"
+        tbl.align["Reference Keys"] = "l"
         for col in self._columns:
-            tbl.add_row([col.name, col.type])
-        tbl = str(tbl)
+            tbl.add_row([col.name, col.type, col._str_foreign_keys(), col._str_ref_keys()])
+        return tbl
+
+    def __repr__(self):
+        tbl = str(self._tablify())
         r = tbl.split('\n')[0]
         brk = "+" + "-"*(len(r)-2) + "+"
         title = "|" + self.name.center(len(r)-2) + "|"
         return brk + "\n" + title + "\n" + tbl
 
     def _repr_html_(self):
-        tbl = PrettyTable(["Column", "Type"])
-        tbl.align["Column"] = "l"
-        tbl.align["Type"] = "l"
-        for col in self._columns:
-            tbl.add_row([col.name, col.type])
-        return tbl.get_html_string()
+        return self._tablify().get_html_string()
 
     def select(self, *args):
         """
@@ -172,12 +211,12 @@ class Table(object):
                 , <name of column 3>
             FROM
                 <name_of_the_table>
-        
+
         Parameters
         ----------
         *args: str
             columns to select
-        
+
         Examples
         --------
         >>> db.people.select("name") # select name from people table
@@ -185,7 +224,7 @@ class Table(object):
         """
         q = self.query_templates['table']['select'] % (", ".join(args), self.name)
         return pd.io.sql.read_sql(q, self.con)
-    
+
     def head(self, n=6):
         """
         Returns first n values of your table as a DataFrame. This is executing:
@@ -194,7 +233,7 @@ class Table(object):
             FROM
                 <name_of_the_table>
             LIMIT <n>
-        
+
         Parameters
         ----------
         n: int
@@ -211,10 +250,10 @@ class Table(object):
             FROM
                 <name_of_the_table>
         """
-        
+
         q = self.query_templates['table']['all'] % (self.name)
         return pd.io.sql.read_sql(q, self.con)
-    
+
     def unique(self, *args):
         """
         Returns all unique values as a DataFrame. This is executing:
@@ -230,7 +269,7 @@ class Table(object):
         Parameters
         ----------
         *args: columns as strings
-        
+
         Examples
         --------
         >>> db.people.unique("name")
@@ -272,7 +311,7 @@ class TableSet(object):
         for tbl in tables:
             setattr(self, tbl.name, tbl)
         self.tables = tables
-    
+
     def __getitem__(self, i):
         return self.tables[i]
 
@@ -303,7 +342,7 @@ class ColumnSet(object):
     """
     def __init__(self, columns):
         self.columns = columns
-    
+
     def __getitem__(self, i):
         return self.columns[i]
 
@@ -315,7 +354,7 @@ class ColumnSet(object):
         for col in self.columns:
             tbl.add_row([col.table, col.name, col.type])
         return tbl
-    
+
     def __repr__(self):
         tbl = str(self._tablify())
         return tbl
@@ -345,8 +384,9 @@ class DB(object):
         Preconfigured database credentials / profile for how you like your queries
     """
     def __init__(self, username=None, password=None, hostname="localhost",
-            port=5432, filename=None, dbname=None, dbtype=None, profile="default", exclude_system_tables=True):
-        
+            port=5432, filename=None, dbname=None, dbtype=None, profile="default",
+            exclude_system_tables=True, limit=1000):
+
 
         if dbtype!="sqlite" and username is None and password is None and hostname=="localhost" and port==5432 and dbname is None:
             self.load_credentials(profile)
@@ -360,6 +400,7 @@ class DB(object):
             self.filename = filename
             self.dbname = dbname
             self.dbtype = dbtype
+            self.limit = limit
 
         if self.dbtype is None:
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
@@ -416,6 +457,7 @@ class DB(object):
             self.filename = creds.get('filename')
             self.dbname = creds.get('dbname')
             self.dbtype = creds.get('dbtype')
+            self.limit = creds.get('limit')
         else:
             raise Exception("Credentials not configured!")
 
@@ -427,7 +469,7 @@ class DB(object):
         ----------
         profile: str
             (optional) name for your database
-        
+
         >>> db = DB(username="hank", password="foo",
         >>>         hostname="prod.mardukas.com", dbname="bar")
         >>> db.save_credentials(profile="production")
@@ -450,7 +492,7 @@ class DB(object):
             "port": self.port,
             "filename": db_filename,
             "dbname": self.dbname,
-            "dbtype": self.dbtype
+            "limit": self.limit,
         }
         with open(f, 'wb') as cfile:
             cfile.write(base64.encodestring(json.dumps(creds)))
@@ -461,7 +503,7 @@ class DB(object):
 
         Parameters
         -----------
-        search: str 
+        search: str
            glob pattern for what you're looking for
 
         Examples
@@ -483,7 +525,7 @@ class DB(object):
 
         Parameters
         -----------
-        search: str 
+        search: str
            glob pattern for what you're looking for
         data_type: str, list
            (optional) specify which data type(s) you want to return
@@ -509,7 +551,20 @@ class DB(object):
                         cols.append(getattr(table, col))
         return ColumnSet(cols)
 
-    def query(self, q):
+    def _assign_limit(self, q, limit=1000):
+        # postgres, mysql, & sqlite
+        if self.dbtype in ["postgres", "redshift", "sqlite", "mysql"]:
+            if limit:
+                q = q.rstrip(";")
+                q = "select * from (%s) q limit %d" % (q, limit)
+            return q
+        # mssql
+        else:
+            if limit:
+                q = "select top %d from (%s) q" % (limit, q)
+                return q
+
+    def query(self, q, limit=None):
         """
         Query your database with a raw string.
 
@@ -517,7 +572,7 @@ class DB(object):
         ----------
         q: str
             Query string to execute
-        
+
         Examples
         --------
         >>> db.query("SELECT * FROM foo LIMIT 100;")
@@ -536,9 +591,13 @@ class DB(object):
             '''
         >>> lead_stats = db.query(q)
         """
+        if limit==False:
+            pass
+        else:
+            q = self._assign_limit(q, limit)
         return pd.io.sql.read_sql(q, self.con)
 
-    def query_from_file(self, filename):
+    def query_from_file(self, filename, limit=None):
         """
         Query your database from a file.
 
@@ -546,12 +605,12 @@ class DB(object):
         ----------
         filename: str
             A SQL script
-        
+
         Examples
         --------
         >>> db.query_from_file("myscript.sql")
         """
-        return self.query(open(filename).read())
+        return self.query(open(filename).read(), limit)
 
     def _create_sqlite_metatable(self):
         sys.stderr.write("Indexing schema. This will take a second...")
@@ -566,7 +625,7 @@ class DB(object):
             self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
         self.con.commit()
         sys.stderr.write("finished!\n")
-    
+
     def refresh_schema(self, exclude_system_tables=True):
         """
         Pulls your database's schema again and looks for any new tables and
@@ -586,14 +645,63 @@ class DB(object):
             if table_name not in tables:
                 tables[table_name] = []
             tables[table_name].append(Column(self.con, self.query_templates, table_name, column_name, data_type))
+
         self.tables = TableSet([Table(self.con, self.query_templates, t, tables[t]) for t in sorted(tables.keys())])
 
+    def to_redshift(self, df, table, bucket_name=None, AWS_ACCESS_KEY=None,
+                    AWS_SECRET_KEY=None):
+        """
+        Uploads a data.frame to redshift
+        """
+        from boto.s3.connection import S3Connection
+        from boto.s3.key import Key
+        from filechunkio import FileChunkIO
 
-    def shell(self):
-        pass
+        conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+        if bucket_name:
+            bucket = conn.create_bucket(bucket_name)
+        else:
+            bucket = conn.create_bucket("dbpy-" + str(uuid.uuid4()))
+        # Get file info
+        source_path = 'path/to/your/file.ext'
+        source_size = os.stat(source_path).st_size
+
+        # Create a multipart upload request
+        mp = bucket.initiate_multipart_upload(os.path.basename(source_path))
+
+        # Use a chunk size of 50 MiB (feel free to change this)
+        chunk_size = 52428800
+        chunk_count = int(math.ceil(source_size / chunk_size))
+
+        # Send the file parts, using FileChunkIO to create a file-like object
+        # that points to a certain byte range within the original file. We
+        # set bytes to never exceed the original file size.
+        for i in range(chunk_count + 1):
+            offset = chunk_size * i
+            bytes = min(chunk_size, source_size - offset)
+            with FileChunkIO(source_path, 'r', offset=offset,
+                                 bytes=bytes) as fp:
+                mp.upload_part_from_file(fp, part_num=i + 1)
+
+        # Finish the upload
+        mp.complete_upload()
+
+        # TODO: \COPY from <boto> to <database>
+
+
+    def list_profiles(self):
+        user = os.path.expanduser("~")
+        for f in os.listdir(user):
+            if f.startswith(".db.py_"):
+                profile = os.path.join(user, f)
+                yield base64.decodestring(open(profile).read())
+
 
 def DemoDB():
+    """
+    Provides an instance of DB that hooks up to the Chinook DB
+    See http://chinookdatabase.codeplex.com/ for more info.
+    """
     _ROOT = os.path.abspath(os.path.dirname(__file__))
     chinook = os.path.join(_ROOT, 'data', "chinook.sqlite")
     return DB(filename=chinook, dbtype="sqlite")
-

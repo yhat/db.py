@@ -345,7 +345,7 @@ __Arguments__
 ```
 
 ## TODO
-- [x] Switch to newever version of pandas sql api
+- [x] Switch to newer version of pandas sql api
 - [ ] Add database support
     - [x] postgres
     - [x] sqlite
@@ -355,3 +355,12 @@ __Arguments__
 - [x] publish examples to nbviewer
 - [x] improve documentation and readme
 - [x] add sample database to distrobution
+- [ ] push to Redshift
+- [ ] "joins to" for columns
+    - [x] postgres
+    - [ ] sqlite
+    - [x] redshift
+    - [ ] mysql
+    - [ ] mssql
+- [ ] patsy formulas
+- [x] profile w/ limit
