@@ -1039,6 +1039,10 @@ class DB(object):
         return self.query(open(filename).read(), limit)
 
     def _create_sqlite_metatable(self):
+        """
+        SQLite doesn't come with any metatables (at least ones that fit into our
+        framework), so we're going to create them.
+        """
         sys.stderr.write("Indexing schema. This will take a second...")
         rows_to_insert = []
         tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
