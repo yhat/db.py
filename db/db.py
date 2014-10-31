@@ -1092,6 +1092,46 @@ class DB(object):
 
         self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
 
+    def to_redshift(self, df, table, bucket_name=None, AWS_ACCESS_KEY=None,
+                    AWS_SECRET_KEY=None):
+        """
+        Uploads a data.frame to redshift
+        """
+        from boto.s3.connection import S3Connection
+        from boto.s3.key import Key
+        from filechunkio import FileChunkIO
+
+        conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+        if bucket_name:
+            bucket = conn.create_bucket(bucket_name)
+        else:
+            bucket = conn.create_bucket("dbpy-" + str(uuid.uuid4()))
+        # Get file info
+        source_path = 'path/to/your/file.ext'
+        source_size = os.stat(source_path).st_size
+
+        # Create a multipart upload request
+        mp = bucket.initiate_multipart_upload(os.path.basename(source_path))
+
+        # Use a chunk size of 50 MiB (feel free to change this)
+        chunk_size = 52428800
+        chunk_count = int(math.ceil(source_size / chunk_size))
+
+        # Send the file parts, using FileChunkIO to create a file-like object
+        # that points to a certain byte range within the original file. We
+        # set bytes to never exceed the original file size.
+        for i in range(chunk_count + 1):
+            offset = chunk_size * i
+            bytes = min(chunk_size, source_size - offset)
+            with FileChunkIO(source_path, 'r', offset=offset,
+                                 bytes=bytes) as fp:
+                mp.upload_part_from_file(fp, part_num=i + 1)
+
+        # Finish the upload
+        mp.complete_upload()
+
+        # TODO: \COPY from <boto> to <database>
+
 
 def list_profiles(self):
     """
