@@ -1124,6 +1124,7 @@ def list_profiles():
             profiles[f[7:]] = profile
     return profiles
 
+
 def remove_profile(name):
     """
     Removes a profile from your config
