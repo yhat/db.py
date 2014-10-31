@@ -1105,19 +1105,20 @@ def list_profiles():
     --------
     >>> from db import list_profiles
     >>> list_profiles()
-    [{u'dbname': None,
+    {'demo': {u'dbname': None,
       u'dbtype': u'sqlite',
-      u'filename': u'/Users/glamp/repos/yhat/opensource/db.py/examples/./baseball-archive-2012.sqlite',
+      u'filename': u'/Users/glamp/repos/yhat/opensource/db.py/db/data/chinook.sqlite',
       u'hostname': u'localhost',
       u'password': None,
       u'port': 5432,
       u'username': None},
-     {u'dbname': u'muppets',
+     'muppets': {u'dbname': u'muppetdb',
       u'dbtype': u'postgres',
-      u'hostname': u'localhost',
+      u'filename': None,
+      u'hostname': u'muppets.yhathq.com',
       u'password': None,
       u'port': 5432,
-      u'username': u'kermit'}]
+      u'username': u'kermit'}}
     """
     profiles = {}
     user = os.path.expanduser("~")
