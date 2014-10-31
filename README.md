@@ -373,8 +373,10 @@ __Arguments__
 | Employee |    Address     | NVARCHAR(70) |
 | Invoice  | BillingAddress | NVARCHAR(70) |
 +----------+----------------+--------------+
->>> db.find_column("*Address*", data_type="NVARCHAR(70)") # returns all columns containing Address that are varchars
->>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) # returns all columns have an "e" and are NVARCHAR/INTEGERS
+# returns all columns containing Address that are varchars
+>>> db.find_column("*Address*", data_type="NVARCHAR(70)")
+# returns all columns have an "e" and are NVARCHAR/INTEGERS
+>>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) 
 ```
 
 ## TODO
