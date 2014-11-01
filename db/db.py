@@ -1159,7 +1159,7 @@ class DB(object):
         # 
         # see http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
         sys.stderr.write("Transfering %s to s3 in chunks" % name)
-        chunk_size = 5000
+        chunk_size = 10000
         len_df = len(df)
         chunks = range(0, len_df, chunk_size)
         def upload_chunk(i):
