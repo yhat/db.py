@@ -1,8 +1,6 @@
 db.py
 =====
 
-`demo <http://nbviewer.ipython.org/gist/glamp/3fa8032499b6db007f0f>`__
-
 What is it?
 -----------
 
@@ -42,21 +40,15 @@ Friendly displays
 .. code:: python
 
     >>> db.tables.Track
-    +------------------------------+
-    |            Track             |
-    +--------------+---------------+
-    | Column       | Type          |
-    +--------------+---------------+
-    | TrackId      | INTEGER       |
-    | Name         | NVARCHAR(200) |
-    | AlbumId      | INTEGER       |
-    | MediaTypeId  | INTEGER       |
-    | GenreId      | INTEGER       |
-    | Composer     | NVARCHAR(220) |
-    | Milliseconds | INTEGER       |
-    | Bytes        | INTEGER       |
-    | UnitPrice    | NUMERIC(10,2) |
-    +--------------+---------------+
+    +-------------------------------------------------------------+
+    |                            Album                            |
+    +----------+---------------+-----------------+----------------+
+    | Column   | Type          | Foreign Keys    | Reference Keys |
+    +----------+---------------+-----------------+----------------+
+    | AlbumId  | INTEGER       |                 | Track.AlbumId  |
+    | Title    | NVARCHAR(160) |                 |                |
+    | ArtistId | INTEGER       | Artist.ArtistId |                |
+    +----------+---------------+-----------------+----------------+
 
 Directly integrated with ``pandas``
 
@@ -117,6 +109,10 @@ Search your schema
     | Track         |    GenreId    | INTEGER |
     +---------------+---------------+---------+
 
+`IPython
+Notebook <http://nbviewer.ipython.org/gist/glamp/3fa8032499b6db007f0f>`__
+friendly |image0|
+
 Quickstart
 ----------
 
@@ -155,25 +151,25 @@ Demo
     |               | tPrice                                                                           |
     +---------------+----------------------------------------------------------------------------------+
     >>> db.tables.Customer
-    +-----------------------------+
-    |           Customer          |
-    +--------------+--------------+
-    | Column       | Type         |
-    +--------------+--------------+
-    | CustomerId   | INTEGER      |
-    | FirstName    | NVARCHAR(40) |
-    | LastName     | NVARCHAR(20) |
-    | Company      | NVARCHAR(80) |
-    | Address      | NVARCHAR(70) |
-    | City         | NVARCHAR(40) |
-    | State        | NVARCHAR(40) |
-    | Country      | NVARCHAR(40) |
-    | PostalCode   | NVARCHAR(10) |
-    | Phone        | NVARCHAR(24) |
-    | Fax          | NVARCHAR(24) |
-    | Email        | NVARCHAR(60) |
-    | SupportRepId | INTEGER      |
-    +--------------+--------------+
+    +------------------------------------------------------------------------+
+    |                                Customer                                |
+    +--------------+--------------+---------------------+--------------------+
+    | Column       | Type         | Foreign Keys        | Reference Keys     |
+    +--------------+--------------+---------------------+--------------------+
+    | CustomerId   | INTEGER      |                     | Invoice.CustomerId |
+    | FirstName    | NVARCHAR(40) |                     |                    |
+    | LastName     | NVARCHAR(20) |                     |                    |
+    | Company      | NVARCHAR(80) |                     |                    |
+    | Address      | NVARCHAR(70) |                     |                    |
+    | City         | NVARCHAR(40) |                     |                    |
+    | State        | NVARCHAR(40) |                     |                    |
+    | Country      | NVARCHAR(40) |                     |                    |
+    | PostalCode   | NVARCHAR(10) |                     |                    |
+    | Phone        | NVARCHAR(24) |                     |                    |
+    | Fax          | NVARCHAR(24) |                     |                    |
+    | Email        | NVARCHAR(60) |                     |                    |
+    | SupportRepId | INTEGER      | Employee.EmployeeId |                    |
+    +--------------+--------------+---------------------+--------------------+
     >>> db.tables.Customer.sample()
        CustomerId  FirstName    LastName  \
     0           4      Bjørn      Hansen
@@ -297,6 +293,11 @@ The ``DB()`` object
    prefixed with ``pg_`` that you probably don't actually care about. on
    the other had if you're administrating a database, you might want to
    query these tables
+-  *limit*: Default number of records to return in a query. This is used
+   by the DB.query method. You can override it by adding limit={X} to
+   the ``query`` method, or by passing an argument to ``DB()``. None
+   indicates that there will be no limit (That's right, you'll be
+   limitless. Bradley Cooper style.)
 
 .. code:: python
 
@@ -323,6 +324,35 @@ Connecting from a profile
     >>> from db import DB
     >>> db = DB() # this loads "default" profile
     >>> db = DB(profile="local_pg")
+
+List your profiles
+^^^^^^^^^^^^^^^^^^
+
+.. code:: python
+
+    >>> from db import list_profiles
+    >>> list_profiles()
+    {'demo': {u'dbname': None,
+      u'dbtype': u'sqlite',
+      u'filename': u'/Users/glamp/repos/yhat/opensource/db.py/db/data/chinook.sqlite',
+      u'hostname': u'localhost',
+      u'password': None,
+      u'port': 5432,
+      u'username': None},
+     'muppets': {u'dbname': u'muppetdb',
+      u'dbtype': u'postgres',
+      u'filename': None,
+      u'hostname': u'muppets.yhathq.com',
+      u'password': None,
+      u'port': 5432,
+      u'username': u'kermit'}}
+
+Remove a profile
+^^^^^^^^^^^^^^^^
+
+.. code:: python
+
+    >>> remove_profile('demo')
 
 Executing Queries
 ~~~~~~~~~~~~~~~~~
@@ -368,7 +398,17 @@ Columns
 
 .. code:: python
 
-    >>> db.find_column("*Id*")
+    >>> db.find_column("Name") # returns all columns named "Name"
+    +-----------+-------------+---------------+
+    | Table     | Column Name | Type          |
+    +-----------+-------------+---------------+
+    | Artist    |     Name    | NVARCHAR(120) |
+    | Genre     |     Name    | NVARCHAR(120) |
+    | MediaType |     Name    | NVARCHAR(120) |
+    | Playlist  |     Name    | NVARCHAR(120) |
+    | Track     |     Name    | NVARCHAR(200) |
+    +-----------+-------------+---------------+
+    >>> db.find_column("*Id") # returns all columns ending w/ Id
     +---------------+---------------+---------+
     | Table         |  Column Name  | Type    |
     +---------------+---------------+---------+
@@ -393,11 +433,18 @@ Columns
     | Track         |    AlbumId    | INTEGER |
     | Track         |    GenreId    | INTEGER |
     +---------------+---------------+---------+
-    >>> results = db.find_column("tmp*") # returns all columns prefixed w/ tmp
-    >>> results = db.find_column("*trans*") # returns all columns containing trans
-    >>> results = db.find_column("*trans*", datatype="varchar") # returns all columns containing trans that are varchars
-    >>> results = db.find_column("*trans*", datatype=["varchar", "float8"]) # returns all columns that are varchars or float8
-    >>> results = db.find_column("*") # returns everything
+    >>> db.find_column("*Address*") # returns all columns containing Address
+    +----------+----------------+--------------+
+    | Table    |  Column Name   | Type         |
+    +----------+----------------+--------------+
+    | Customer |    Address     | NVARCHAR(70) |
+    | Employee |    Address     | NVARCHAR(70) |
+    | Invoice  | BillingAddress | NVARCHAR(70) |
+    +----------+----------------+--------------+
+    # returns all columns containing Address that are varchars
+    >>> db.find_column("*Address*", data_type="NVARCHAR(70)")
+    # returns all columns have an "e" and are NVARCHAR/INTEGERS
+    >>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) 
 
 TODO
 ----
@@ -414,7 +461,7 @@ TODO
 -  [x] publish examples to nbviewer
 -  [x] improve documentation and readme
 -  [x] add sample database to distrobution
--  [ ] push to Redshift
+-  [x] push to Redshift
 -  [ ] "joins to" for columns
 
    -  [x] postgres
@@ -423,6 +470,8 @@ TODO
    -  [x] mysql
    -  [ ] mssql
 
+-  [ ] intelligent display of number/size returned in query
 -  [ ] patsy formulas
 -  [x] profile w/ limit
 
+.. |image0| image:: https://raw.githubusercontent.com/yhat/db.py/master/examples/ipython.png
