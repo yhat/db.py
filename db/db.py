@@ -1118,6 +1118,29 @@ class DB(object):
 
     def to_redshift(self, name, df, drop_if_exists=False,
             AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, print_sql=False):
+        """
+        Upload a dataframe to redsfhit via s3.
+
+        Parameters
+        ----------
+        name: str
+            name for your shiny new table
+        df: DataFrame
+            data frame you want to save to the db
+        drop_if_exists: bool (False)
+            whether you'd like to drop the table if it already exists
+        AWS_ACCESS_KEY: str
+            your aws access key. if this is None, the function will try
+            and grab AWS_ACCESS_KEY from your environment variables
+        AWS_SECRET_KEY: str
+            your aws secrety key. if this is None, the function will try
+            and grab AWS_SECRET_KEY from your environment variables
+        print_sql: bool (False)
+            option for printing sql statement that will be executed
+
+        Examples
+        --------
+        """
         if self.dbtype!="redshift":
             raise Exception("Sorry, feature only available for redshift.")
         from boto.s3.connection import S3Connection
@@ -1149,7 +1172,6 @@ class DB(object):
             with gzip.GzipFile(fileobj=out, mode="w") as f:
                   f.write(chunk.to_csv(index=False, encoding='utf-8'))
             k.set_contents_from_string(out.getvalue())
-            # sys.stderr.write("\t%d of %d complete\n" % (i + chunk_size, len_df))
             sys.stderr.write(".")
             return i
         
