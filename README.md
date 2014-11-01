@@ -101,7 +101,7 @@ Search your schema
 ## Quickstart
 
 ### Installation
-`db.py` is on [PyPi](https://pypi.python.org/pypi/db.py/)
+`db.py` is on [PyPi](https://pypi.python.org/pypi/db.py/).
 ```bash
 $ pip install db.py
 ```
