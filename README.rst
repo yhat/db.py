@@ -33,80 +33,89 @@ Fully compatible with predictive type
 
 .. code:: python
 
-    db.tables.
-    db.tables.administrable_role_authorizations      db.tables.domain_udt_usage                       db.tables.referential_constraints                db.tables.tables
-    db.tables.applicable_roles                       db.tables.domains                                db.tables.role_column_grants                     db.tables.tmp_mt_model
-    db.tables.attributes                             db.tables.element_types                          db.tables.role_routine_grants                    db.tables.tracking
-    db.tables.character_sets                         db.tables.enabled_roles                          db.tables.role_table_grants                      db.tables.triggered_update_columns
-    db.tables.check_constraint_routine_usage         db.tables.foreign_data_wrapper_options           db.tables.role_udt_grants                        db.tables.triggers
-    db.tables.check_constraints                      db.tables.foreign_data_wrappers                  db.tables.role_usage_grants                      db.tables.udt_privileges
-    db.tables.collation_character_set_applicability  db.tables.foreign_server_options                 db.tables.routine_privileges                     db.tables.usage_privileges
-    db.tables.collations                             db.tables.foreign_servers                        db.tables.routines                               db.tables.user_defined_types
-    db.tables.column_domain_usage                    db.tables.foreign_table_options                  db.tables.schemata                               db.tables.user_mapping_options
-    db.tables.column_options                         db.tables.foreign_tables                         db.tables.sequences                              db.tables.user_mappings
-    db.tables.column_privileges                      db.tables.ga_data                                db.tables.sql_features                           db.tables.users
-    db.tables.column_udt_usage                       db.tables.index                                  db.tables.sql_implementation_info                db.tables.view_column_usage
+    >>> db.tables.
+    db.tables.Album          db.tables.Customer       db.tables.Genre          db.tables.InvoiceLine    db.tables.Playlist       db.tables.Track
+    db.tables.Artist         db.tables.Employee       db.tables.Invoice        db.tables.MediaType      db.tables.PlaylistTrack  db.tables.tables
 
 Friendly displays
 
 .. code:: python
 
-    >>> db.tables.mt_s3_logs
-    +---------------------------------+
-    |            mt_s3_logs           |
-    +-----------------------+---------+
-    | Column                | Type    |
-    +-----------------------+---------+
-    | bucket_owner          | varchar |
-    | bucket                | varchar |
-    | datetime              | varchar |
-    | ip                    | varchar |
-    | requestor_id          | varchar |
-    | request_id            | varchar |
-    | operation             | varchar |
-    | key                   | varchar |
-    | http_method_uri_proto | varchar |
-    | http_status           | varchar |
-    | s3_error              | varchar |
-    | bytes_sent            | varchar |
-    | object_size           | varchar |
-    | total_time            | varchar |
-    | turn_around_time      | varchar |
-    | referer               | varchar |
-    | user_agent            | varchar |
-    | _id                   | int8    |
-    +-----------------------+---------+
+    >>> db.tables.Track
+    +------------------------------+
+    |            Track             |
+    +--------------+---------------+
+    | Column       | Type          |
+    +--------------+---------------+
+    | TrackId      | INTEGER       |
+    | Name         | NVARCHAR(200) |
+    | AlbumId      | INTEGER       |
+    | MediaTypeId  | INTEGER       |
+    | GenreId      | INTEGER       |
+    | Composer     | NVARCHAR(220) |
+    | Milliseconds | INTEGER       |
+    | Bytes        | INTEGER       |
+    | UnitPrice    | NUMERIC(10,2) |
+    +--------------+---------------+
 
 Directly integrated with ``pandas``
 
 .. code:: python
 
-    >>> db.tables.mt_s3_logs.head()
-       _id                                       bucket_owner     bucket
-    0    1  cf77fe33107978c68ebf91e44d101ec99ec75c3cba670e...  moontower
-    1    2  cf77fe33107978c68ebf91e44d101ec99ec75c3cba670e...  moontower
-    2    3  cf77fe33107978c68ebf91e44d101ec99ec75c3cba670e...  moontower
-    3    4  cf77fe33107978c68ebf91e44d101ec99ec75c3cba670e...  moontower
-    4    5  cf77fe33107978c68ebf91e44d101ec99ec75c3cba670e...  moontower
-    5    6  cf77fe33107978c68ebf91e44d101ec99ec75c3cba670e...  moontower
+    >>> db.tables.Track.head()
+       TrackId                                     Name  AlbumId  MediaTypeId  \
+    0        1  For Those About To Rock (We Salute You)        1            1
+    1        2                        Balls to the Wall        2            2
+    2        3                          Fast As a Shark        3            2
+    3        4                        Restless and Wild        3            2
+    4        5                     Princess of the Dawn        3            2
+    5        6                    Put The Finger On You        1            1
+
+       GenreId                                           Composer  Milliseconds  \
+    0        1          Angus Young, Malcolm Young, Brian Johnson        343719
+    1        1                                               None        342562
+    2        1  F. Baltes, S. Kaufman, U. Dirkscneider & W. Ho...        230619
+    3        1  F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. D...        252051
+    4        1                         Deaffy & R.A. Smith-Diesel        375418
+    5        1          Angus Young, Malcolm Young, Brian Johnson        205662
+
+          Bytes  UnitPrice
+    0  11170334       0.99
+    1   5510424       0.99
+    2   3990994       0.99
+    3   4331779       0.99
+    4   6290521       0.99
+    5   6713451       0.99
 
 Search your schema
 
 .. code:: python
 
-    In [10]: db.find_column("*_id*", data_type=["int4", "int8"])
-    Out[10]:
-    +------------------+-------------+------+
-    | Table            | Column Name | Type |
-    +------------------+-------------+------+
-    | ga_data          |     _id     | int4 |
-    | jobs             |     _id     | int4 |
-    | mt_s3_logs       |     _id     | int8 |
-    | mt_s3_logs_users |     _id     | int8 |
-    | tmp_mt_model     |     _id     | int8 |
-    | tracking         |     _id     | int4 |
-    | users            |     _id     | int4 |
-    +------------------+-------------+------+
+    >>> db.find_column("*Id*")
+    +---------------+---------------+---------+
+    | Table         |  Column Name  | Type    |
+    +---------------+---------------+---------+
+    | Album         |    AlbumId    | INTEGER |
+    | Album         |    ArtistId   | INTEGER |
+    | Artist        |    ArtistId   | INTEGER |
+    | Customer      |  SupportRepId | INTEGER |
+    | Customer      |   CustomerId  | INTEGER |
+    | Employee      |   EmployeeId  | INTEGER |
+    | Genre         |    GenreId    | INTEGER |
+    | Invoice       |   InvoiceId   | INTEGER |
+    | Invoice       |   CustomerId  | INTEGER |
+    | InvoiceLine   |   InvoiceId   | INTEGER |
+    | InvoiceLine   |    TrackId    | INTEGER |
+    | InvoiceLine   | InvoiceLineId | INTEGER |
+    | MediaType     |  MediaTypeId  | INTEGER |
+    | Playlist      |   PlaylistId  | INTEGER |
+    | PlaylistTrack |    TrackId    | INTEGER |
+    | PlaylistTrack |   PlaylistId  | INTEGER |
+    | Track         |  MediaTypeId  | INTEGER |
+    | Track         |    TrackId    | INTEGER |
+    | Track         |    AlbumId    | INTEGER |
+    | Track         |    GenreId    | INTEGER |
+    +---------------+---------------+---------+
 
 Quickstart
 ----------
@@ -124,7 +133,7 @@ Demo
 .. code:: python
 
     >>> from db import DemoDB # or connect to your own using DB. see below
-    >>> db = DemoDB()
+    >>> db = DemoDB() # comes from: http://chinookdatabase.codeplex.com/
     >>> db.tables
     +---------------+----------------------------------------------------------------------------------+
     | Table         | Columns                                                                          |
@@ -323,8 +332,8 @@ From a string
 
 .. code:: python
 
-    >>> db.query("select * from foo;")
-    >>> df = db.query("select * from bar;")
+    >>> df1 = db.query("select * from Artist;")
+    >>> df2 = db.query("select * from Album;")
 
 From a file
 ^^^^^^^^^^^
@@ -342,49 +351,58 @@ Tables
 
 .. code:: python
 
-    >>> db.find_table("*mt*")
-    +------------------+----------------------------------------------------------------------------------+
-    | Table            | Columns                                                                          |
-    +------------------+----------------------------------------------------------------------------------+
-    | mt_s3_logs       | bucket_owner, bucket, datetime, ip, requestor_id, request_id, operation, key, ht |
-    |                  | tp_method_uri_proto, http_status, s3_error, bytes_sent, object_size, total_time, |
-    |                  |  turn_around_time, referer, user_agent, _id                                      |
-    | mt_s3_logs_users | _id, user_id                                                                     |
-    | tmp_mt_model     | _id, datetime, user_id, n, key, previous_key, tdiff, same_session                |
-    +------------------+----------------------------------------------------------------------------------+
+    >>> db.find_table("A*")
+    +--------+--------------------------+
+    | Table  | Columns                  |
+    +--------+--------------------------+
+    | Album  | AlbumId, Title, ArtistId |
+    | Artist | ArtistId, Name           |
+    +--------+--------------------------+
     >>> results = db.find_table("tmp*") # returns all tables prefixed w/ tmp
-    >>> results = db.find_table("sg_trans*") # returns all tables prefixed w/ sg_trans
-    >>> results = db.find_table("*trans*") # returns all tables containing trans
-    >>> results = db.find_table("*") # returns everythin
+    >>> results = db.find_table("prod_*") # returns all tables prefixed w/ prod_
+    >>> results = db.find_table("*Invoice*") # returns all tables containing trans
+    >>> results = db.find_table("*") # returns everything
 
 Columns
 ^^^^^^^
 
 .. code:: python
 
-    >>> db.find_column("_id")
-    +------------------+-------------+------+
-    | Table            | Column Name | Type |
-    +------------------+-------------+------+
-    | ga_data          |     _id     | int4 |
-    | jobs             |     _id     | int4 |
-    | mt_s3_logs       |     _id     | int8 |
-    | mt_s3_logs_users |     _id     | int8 |
-    | tmp_mt_model     |     _id     | int8 |
-    | tracking         |     _id     | int4 |
-    | users            |     _id     | int4 |
-    +------------------+-------------+------+
+    >>> db.find_column("*Id*")
+    +---------------+---------------+---------+
+    | Table         |  Column Name  | Type    |
+    +---------------+---------------+---------+
+    | Album         |    AlbumId    | INTEGER |
+    | Album         |    ArtistId   | INTEGER |
+    | Artist        |    ArtistId   | INTEGER |
+    | Customer      |  SupportRepId | INTEGER |
+    | Customer      |   CustomerId  | INTEGER |
+    | Employee      |   EmployeeId  | INTEGER |
+    | Genre         |    GenreId    | INTEGER |
+    | Invoice       |   InvoiceId   | INTEGER |
+    | Invoice       |   CustomerId  | INTEGER |
+    | InvoiceLine   |   InvoiceId   | INTEGER |
+    | InvoiceLine   |    TrackId    | INTEGER |
+    | InvoiceLine   | InvoiceLineId | INTEGER |
+    | MediaType     |  MediaTypeId  | INTEGER |
+    | Playlist      |   PlaylistId  | INTEGER |
+    | PlaylistTrack |    TrackId    | INTEGER |
+    | PlaylistTrack |   PlaylistId  | INTEGER |
+    | Track         |  MediaTypeId  | INTEGER |
+    | Track         |    TrackId    | INTEGER |
+    | Track         |    AlbumId    | INTEGER |
+    | Track         |    GenreId    | INTEGER |
+    +---------------+---------------+---------+
     >>> results = db.find_column("tmp*") # returns all columns prefixed w/ tmp
-    >>> results = db.find_column("sg_trans*") # returns all columns prefixed w/ sg_trans
     >>> results = db.find_column("*trans*") # returns all columns containing trans
     >>> results = db.find_column("*trans*", datatype="varchar") # returns all columns containing trans that are varchars
-    >>> results = db.find_column("*trans*", datatype=["varchar", float8]) # returns all columns that are varchars or float8
+    >>> results = db.find_column("*trans*", datatype=["varchar", "float8"]) # returns all columns that are varchars or float8
     >>> results = db.find_column("*") # returns everything
 
 TODO
 ----
 
--  [x] Switch to newever version of pandas sql api
+-  [x] Switch to newer version of pandas sql api
 -  [ ] Add database support
 
    -  [x] postgres
@@ -396,4 +414,15 @@ TODO
 -  [x] publish examples to nbviewer
 -  [x] improve documentation and readme
 -  [x] add sample database to distrobution
+-  [ ] push to Redshift
+-  [ ] "joins to" for columns
+
+   -  [x] postgres
+   -  [x] sqlite
+   -  [x] redshift
+   -  [x] mysql
+   -  [ ] mssql
+
+-  [ ] patsy formulas
+-  [x] profile w/ limit
 

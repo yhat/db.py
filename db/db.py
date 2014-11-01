@@ -1039,6 +1039,10 @@ class DB(object):
         return self.query(open(filename).read(), limit)
 
     def _create_sqlite_metatable(self):
+        """
+        SQLite doesn't come with any metatables (at least ones that fit into our
+        framework), so we're going to create them.
+        """
         sys.stderr.write("Indexing schema. This will take a second...")
         rows_to_insert = []
         tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
@@ -1133,7 +1137,7 @@ class DB(object):
         # TODO: \COPY from <boto> to <database>
 
 
-def list_profiles(self):
+def list_profiles():
     """
     Lists all of the database profiles available
 
@@ -1141,14 +1145,45 @@ def list_profiles(self):
     --------
     >>> from db import list_profiles
     >>> list_profiles()
+    {'demo': {u'dbname': None,
+      u'dbtype': u'sqlite',
+      u'filename': u'/Users/glamp/repos/yhat/opensource/db.py/db/data/chinook.sqlite',
+      u'hostname': u'localhost',
+      u'password': None,
+      u'port': 5432,
+      u'username': None},
+     'muppets': {u'dbname': u'muppetdb',
+      u'dbtype': u'postgres',
+      u'filename': None,
+      u'hostname': u'muppets.yhathq.com',
+      u'password': None,
+      u'port': 5432,
+      u'username': u'kermit'}}
     """
-    profiles = []
+    profiles = {}
     user = os.path.expanduser("~")
     for f in os.listdir(user):
         if f.startswith(".db.py_"):
             profile = os.path.join(user, f)
-            profiles.append(base64.decodestring(open(profile).read()))
+            profile = json.loads(base64.decodestring(open(profile).read()))
+            profiles[f[7:]] = profile
     return profiles
+
+
+def remove_profile(name):
+    """
+    Removes a profile from your config
+    """
+    user = os.path.expanduser("~")
+    f = os.path.join(user, ".db.py_" + name)
+    try:
+        try:
+            open(f)
+        except:
+            raise Exception("Profile '%s' does not exist. Could not find file %s" % (name, f))
+        os.remove(f)
+    except Exception, e:
+        raise Exception("Could not remove profile %s! Excpetion: %s" % (name, str(e)))
 
 
 def DemoDB():
