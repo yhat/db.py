@@ -390,7 +390,7 @@ __Arguments__
 - [x] publish examples to nbviewer
 - [x] improve documentation and readme
 - [x] add sample database to distrobution
-- [ ] push to Redshift
+- [x] push to Redshift
 - [ ] "joins to" for columns
     - [x] postgres
     - [x] sqlite
