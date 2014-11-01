@@ -397,5 +397,6 @@ __Arguments__
     - [x] redshift
     - [x] mysql
     - [ ] mssql
+- [ ] intelligent display of number/size returned in query
 - [ ] patsy formulas
 - [x] profile w/ limit

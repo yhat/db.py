@@ -42,3 +42,4 @@ nosetests.xml
 
 .ipynb_checkpoints
 test.py
+redshift.py

@@ -1,4 +1,7 @@
+import threading
 import glob
+import gzip
+from StringIO import StringIO
 import uuid
 import json
 import base64
@@ -18,6 +21,7 @@ from queries import sqlite as sqlite_templates
 queries_templates = {
     "mysql": mysql_templates,
     "postgres": postgres_templates,
+    "redshift": postgres_templates,
     "sqlite": sqlite_templates,
 }
 
@@ -591,7 +595,12 @@ class DB(object):
     hostname: str
         Hostname your database is running on (i.e. "localhost", "10.20.1.248")
     port: int
-        Port the database is running on (defaults to 5432)
+        Port the database is running on. defaults to default port for db.
+            portgres: 5432
+            redshift: 5439
+            mysql: 3306
+            sqlite: n/a
+            mssql: 1433
     filename: str
         path to sqlite database
     dbname: str
@@ -626,14 +635,16 @@ class DB(object):
             exclude_system_tables=True, limit=1000):
 
         if port is None:
-            if dbtype in ("postgres", "redshift"):
+            if dbtype=="postgres":
                 port = 5432
+            elif dbtype=="redshift":
+                port = 5439
             elif dbtype=="mysql":
                 port = 3306
             elif dbtype=="sqlite":
                 port = None
             elif dbtype=="mssql":
-                port = None
+                port = 1433
             else:
                 raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
@@ -1095,7 +1106,123 @@ class DB(object):
             tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type))
 
         self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
+    
+    def _try_command(self, cmd):
+        try:
+            self.cur.execute(cmd)
+        except Exception, e:
+            print "Error executing command:"
+            print "\t '%s'" % cmd
+            print "Exception: %s" % str(e)
+            self.con.rollback()
 
+    def to_redshift(self, name, df, drop_if_exists=False,
+            AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, print_sql=False):
+        """
+        Upload a dataframe to redsfhit via s3.
+
+        Parameters
+        ----------
+        name: str
+            name for your shiny new table
+        df: DataFrame
+            data frame you want to save to the db
+        drop_if_exists: bool (False)
+            whether you'd like to drop the table if it already exists
+        AWS_ACCESS_KEY: str
+            your aws access key. if this is None, the function will try
+            and grab AWS_ACCESS_KEY from your environment variables
+        AWS_SECRET_KEY: str
+            your aws secrety key. if this is None, the function will try
+            and grab AWS_SECRET_KEY from your environment variables
+        print_sql: bool (False)
+            option for printing sql statement that will be executed
+
+        Examples
+        --------
+        """
+        if self.dbtype!="redshift":
+            raise Exception("Sorry, feature only available for redshift.")
+        from boto.s3.connection import S3Connection
+        from boto.s3.key import Key
+
+        if AWS_ACCESS_KEY is None:
+            AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
+        if AWS_SECRET_KEY is None:
+            AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
+
+        conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+        bucket_name = "dbpy-%s" % str(uuid.uuid4())
+        bucket = conn.create_bucket(bucket_name)
+        # we're going to chunk the file into pieces. according to amazon, this is 
+        # much faster when it comes time to run the \COPY statment.
+        # 
+        # see http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
+        sys.stderr.write("Transfering %s to s3 in chunks" % name)
+        chunk_size = 5000
+        len_df = len(df)
+        chunks = range(0, len_df, chunk_size)
+        def upload_chunk(i):
+            conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+            chunk = df[i:(i+chunk_size)]
+            k = Key(bucket)
+            k.key = 'data-%d-%d.csv.gz' % (i, i + chunk_size)
+            k.set_metadata('parent', 'db.py')
+            out = StringIO()
+            with gzip.GzipFile(fileobj=out, mode="w") as f:
+                  f.write(chunk.to_csv(index=False, encoding='utf-8'))
+            k.set_contents_from_string(out.getvalue())
+            sys.stderr.write(".")
+            return i
+        
+        threads = []
+        for i in chunks:
+            t = threading.Thread(target=upload_chunk, args=(i, ))
+            t.start()
+            threads.append(t)
+
+        # join all threads
+        for t in threads:
+            t.join()
+        sys.stderr.write("done\n")
+        
+        if drop_if_exists:
+            sql = "DROP TABLE IF EXISTS %s;" % name
+            if print_sql:
+                sys.stderr.write(sql + "\n")
+            self._try_command(sql)
+
+        # generate schema from pandas and then adapt for redshift
+        sql = pd.io.sql.get_schema(df, name)
+        # defaults to using SQLite format. need to convert it to Postgres
+        sql = sql.replace("[", "").replace("]", "")
+        # we'll create the table ONLY if it doens't exist
+        sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
+        if print_sql:
+            sys.stderr.write(sql + "\n")
+        self._try_command(sql)
+        self.con.commit()
+
+        # perform the \COPY here. the s3 argument is a prefix, so it'll pick up
+        # all of the data*.gz files we've created
+        sys.stderr.write("Copying data from s3 to redshfit...")
+        sql = """
+        copy {name} from 's3://{bucket_name}/data' 
+        credentials 'aws_access_key_id={AWS_ACCESS_KEY};aws_secret_access_key={AWS_SECRET_KEY}'
+        CSV IGNOREHEADER as 1 GZIP;
+        """.format(name=name, bucket_name=bucket_name,
+                   AWS_ACCESS_KEY=AWS_ACCESS_KEY, AWS_SECRET_KEY=AWS_SECRET_KEY)
+        if print_sql:
+            sys.stderr.write(sql + "\n")
+        self._try_command(sql)
+        self.con.commit()
+        sys.stderr.write("done!\n")
+        # tear down the bucket
+        sys.stderr.write("Tearing down bucket...")
+        for key in bucket.list():
+            key.delete()
+        conn.delete_bucket(bucket_name)
+        sys.stderr.write("done!")
 
 def list_profiles():
     """
@@ -1154,3 +1281,4 @@ def DemoDB():
     _ROOT = os.path.abspath(os.path.dirname(__file__))
     chinook = os.path.join(_ROOT, 'data', "chinook.sqlite")
     return DB(filename=chinook, dbtype="sqlite")
+
