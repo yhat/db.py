@@ -1,7 +1,7 @@
+import threading
 import glob
 import gzip
 from StringIO import StringIO
-from gzip import zlib
 import uuid
 import json
 import base64
@@ -1132,15 +1132,15 @@ class DB(object):
         bucket_name = "dbpy-%s" % str(uuid.uuid4())
         bucket = conn.create_bucket(bucket_name)
         # we're going to chunk the file into pieces. according to amazon, this is 
-        # much faster when it comes time to run the \COPY statment. we could also
-        # get into some parallel uploading as well, but for now we'll just stick
-        # with a single process
+        # much faster when it comes time to run the \COPY statment.
         # 
         # see http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
-        sys.stderr.write("Transfering %s to s3 in chunks...\n" % name)
+        sys.stderr.write("Transfering %s to s3 in chunks" % name)
         chunk_size = 5000
         len_df = len(df)
-        for i in range(0, len_df, chunk_size):
+        chunks = range(0, len_df, chunk_size)
+        def upload_chunk(i):
+            conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
             chunk = df[i:(i+chunk_size)]
             k = Key(bucket)
             k.key = 'data-%d-%d.csv.gz' % (i, i + chunk_size)
@@ -1149,7 +1149,21 @@ class DB(object):
             with gzip.GzipFile(fileobj=out, mode="w") as f:
                   f.write(chunk.to_csv(index=False, encoding='utf-8'))
             k.set_contents_from_string(out.getvalue())
-            sys.stderr.write("\t%d of %d complete\n" % (i + chunk_size, len_df))
+            # sys.stderr.write("\t%d of %d complete\n" % (i + chunk_size, len_df))
+            sys.stderr.write(".")
+            return i
+        
+        threads = []
+        for i in chunks:
+            t = threading.Thread(target=upload_chunk, args=(i, ))
+            t.start()
+            threads.append(t)
+
+        # join all threads
+        for t in threads:
+            t.join()
+        sys.stderr.write("done\n")
+        
         if drop_if_exists:
             sql = "DROP TABLE IF EXISTS %s;" % name
             if print_sql:
