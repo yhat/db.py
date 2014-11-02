@@ -4,7 +4,8 @@ from setuptools import find_packages
 
 required = [
     "prettytable==0.7.2",
-    "pandas==0.15.0"
+    "pandas==0.15.0",
+    "boto==2.30.0"
 ]
 
 setup(
