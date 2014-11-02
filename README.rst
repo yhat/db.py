@@ -1,6 +1,8 @@
 db.py
 =====
 
+`Blog Post <http://blog.yhathq.com/posts/introducing-db-py.html>`__
+
 What is it?
 -----------
 
@@ -119,9 +121,26 @@ Quickstart
 Installation
 ~~~~~~~~~~~~
 
+``db.py`` is on `PyPi <https://pypi.python.org/pypi/db.py/>`__.
+
 .. code:: bash
 
     $ pip install db.py
+
+The database libraries being used under the hood are optional
+dependencies (if you use mysql, you probably don't care about installing
+psycopg2). Based on the databases you're using, you'll need one (or
+many) of the following:
+
+-  **PostgreSQL**: `psycopg2 <http://initd.org/psycopg/>`__.
+   `Windows <http://www.lfd.uci.edu/~gohlke/pythonlibs/#psycopg>`__
+-  **Redshift**: psycopg2. Redshift is a flavor of PostgreSQL.
+-  **MySQL**: `MySQLdb <http://mysql-python.sourceforge.net/>`__
+-  **SQLite**:
+   `sqlite3 <https://docs.python.org/2/library/sqlite3.html>`__. Should
+   be installed already.
+-  **MS SQL**: *TBD. Suggestions welcome!
+   https://github.com/yhat/db.py/issues*
 
 Demo
 ~~~~
@@ -293,7 +312,7 @@ The ``DB()`` object
    prefixed with ``pg_`` that you probably don't actually care about. on
    the other had if you're administrating a database, you might want to
    query these tables
--  *limit*: Default number of records to return in a query. This is used
+-  *limit*: default number of records to return in a query. This is used
    by the DB.query method. You can override it by adding limit={X} to
    the ``query`` method, or by passing an argument to ``DB()``. None
    indicates that there will be no limit (That's right, you'll be
