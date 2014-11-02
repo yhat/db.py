@@ -107,6 +107,17 @@ Search your schema
 $ pip install db.py
 ```
 
+The database libraries being used under the hood are optional dependencies (if 
+you use mysql, you probably don't care about installing psycopg2). Based on the 
+databases you're using, you'll need one (or many) of the following:
+
+- __PostgreSQL__: [psycopg2](http://initd.org/psycopg/). [Windows](http://www.lfd.uci.edu/~gohlke/pythonlibs/#psycopg)
+- __Redshift__: psycopg2. Redshift is a flavor of PostgreSQL.
+- __MySQL__: [MySQLdb](http://mysql-python.sourceforge.net/)
+- __SQLite__: [sqlite3](https://docs.python.org/2/library/sqlite3.html). Should be installed already.
+- __MS SQL__: *TBD. Suggestions welcome! https://github.com/yhat/db.py/issues* 
+
+
 ### Demo
 ```python
 >>> from db import DemoDB # or connect to your own using DB. see below

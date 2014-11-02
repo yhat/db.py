@@ -1150,6 +1150,10 @@ class DB(object):
             AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
         if AWS_SECRET_KEY is None:
             AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
+        if AWS_ACCESS_KEY is None:
+            raise Exception("Must specify AWS_ACCESS_KEY as either function argument or as an environment variable `AWS_ACCESS_KEY`")
+        if AWS_SECRET_KEY is None:
+            raise Exception("Must specify AWS_SECRET_KEY as either function argument or as an environment variable `AWS_SECRET_KEY`")
 
         conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
         bucket_name = "dbpy-%s" % str(uuid.uuid4())
