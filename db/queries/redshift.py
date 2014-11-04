@@ -21,7 +21,8 @@ queries = {
                 from
                     information_schema.columns
                 where
-                    table_name not like 'pg_%';
+                    table_name not like 'pg_%'
+                    and table_name not like 'svl_%';
                 """,
         "schema_with_system": """
                 select

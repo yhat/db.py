@@ -1091,6 +1091,7 @@ class DB(object):
         columns.
         """
 
+        sys.stderr.write("Refreshing schema. Please wait...")
         if exclude_system_tables==True:
             q = self._query_templates['system']['schema_no_system']
         else:
@@ -1106,6 +1107,7 @@ class DB(object):
             tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type))
 
         self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
+        sys.stderr.write("done!\n")
     
     def _try_command(self, cmd):
         try:
