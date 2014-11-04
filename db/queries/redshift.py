@@ -21,8 +21,7 @@ queries = {
                 from
                     information_schema.columns
                 where
-                    table_name not like 'pg_%'
-                    and table_name not like 'svl_%';
+                    table_schema not in ('information_schema', 'pg_catalog');
                 """,
         "schema_with_system": """
                 select
