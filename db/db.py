@@ -1131,7 +1131,7 @@ class DB(object):
             print "Exception: %s" % str(e)
             self.con.rollback()
 
-    def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000
+    def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000,
                     AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, print_sql=False):
         """
         Upload a dataframe to redshift via s3.
