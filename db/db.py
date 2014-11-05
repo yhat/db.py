@@ -1111,7 +1111,7 @@ class DB(object):
 
         self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
         sys.stderr.write("done!\n")
-    
+
     def _try_command(self, cmd):
         try:
             self.cur.execute(cmd)
@@ -1121,10 +1121,10 @@ class DB(object):
             print "Exception: %s" % str(e)
             self.con.rollback()
 
-    def to_redshift(self, name, df, drop_if_exists=False,
-            AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, print_sql=False):
+    def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000
+                    AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, print_sql=False):
         """
-        Upload a dataframe to redsfhit via s3.
+        Upload a dataframe to redshift via s3.
 
         Parameters
         ----------
@@ -1134,6 +1134,11 @@ class DB(object):
             data frame you want to save to the db
         drop_if_exists: bool (False)
             whether you'd like to drop the table if it already exists
+        chunk_size: int (10000)
+            Number of DataFrame chunks to upload and COPY from S3. Upload speed
+            is *much* faster if chunks = multiple-of-slices. Ex: DW1.XL nodes
+            have 2 slices per node, so if running 2 nodes you will want
+            chunk_size=4, 8, etc
         AWS_ACCESS_KEY: str
             your aws access key. if this is None, the function will try
             and grab AWS_ACCESS_KEY from your environment variables
@@ -1163,12 +1168,11 @@ class DB(object):
         conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
         bucket_name = "dbpy-%s" % str(uuid.uuid4())
         bucket = conn.create_bucket(bucket_name)
-        # we're going to chunk the file into pieces. according to amazon, this is 
+        # we're going to chunk the file into pieces. according to amazon, this is
         # much faster when it comes time to run the \COPY statment.
-        # 
+        #
         # see http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
         sys.stderr.write("Transfering %s to s3 in chunks" % name)
-        chunk_size = 10000
         len_df = len(df)
         chunks = range(0, len_df, chunk_size)
         def upload_chunk(i):
@@ -1183,7 +1187,7 @@ class DB(object):
             k.set_contents_from_string(out.getvalue())
             sys.stderr.write(".")
             return i
-        
+
         threads = []
         for i in chunks:
             t = threading.Thread(target=upload_chunk, args=(i, ))
@@ -1194,7 +1198,7 @@ class DB(object):
         for t in threads:
             t.join()
         sys.stderr.write("done\n")
-        
+
         if drop_if_exists:
             sql = "DROP TABLE IF EXISTS %s;" % name
             if print_sql:
@@ -1216,7 +1220,7 @@ class DB(object):
         # all of the data*.gz files we've created
         sys.stderr.write("Copying data from s3 to redshfit...")
         sql = """
-        copy {name} from 's3://{bucket_name}/data' 
+        copy {name} from 's3://{bucket_name}/data'
         credentials 'aws_access_key_id={AWS_ACCESS_KEY};aws_secret_access_key={AWS_SECRET_KEY}'
         CSV IGNOREHEADER as 1 GZIP;
         """.format(name=name, bucket_name=bucket_name,
