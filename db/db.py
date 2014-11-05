@@ -645,10 +645,12 @@ class DB(object):
                 port = None
             elif dbtype=="mssql":
                 port = 1433
+            elif profile is not None:
+                pass
             else:
                 raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
-        if dbtype!="sqlite" and username is None and password is None and hostname=="localhost" and port==5432 and dbname is None:
+        if dbtype!="sqlite" and username is None:
             self.load_credentials(profile)
         elif dbtype=="sqlite" and filename is None:
             self.load_credentials(profile)
@@ -666,15 +668,15 @@ class DB(object):
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
         self._query_templates = queries_templates.get(self.dbtype).queries
 
-        if dbtype=="postgres" or dbtype=="redshift":
+        if self.dbtype=="postgres" or self.dbtype=="redshift":
             self.con = pg.connect(user=self.username, password=self.password,
                 host=self.hostname, port=self.port, dbname=self.dbname)
             self.cur = self.con.cursor()
-        elif dbtype=="sqlite":
+        elif self.dbtype=="sqlite":
             self.con = sqlite.connect(self.filename)
             self.cur = self.con.cursor()
             self._create_sqlite_metatable()
-        elif dbtype=="mysql":
+        elif self.dbtype=="mysql":
             creds = {}
             for arg in ["username", "password", "hostname", "port", "dbname"]:
                 if getattr(self, arg):
@@ -690,7 +692,7 @@ class DB(object):
                     creds[arg] = value
             self.con = MySQLdb.connect(**creds)
             self.cur = self.con.cursor()
-        elif dbtype=="mssql":
+        elif self.dbtype=="mssql":
             raise Exception("MS SQL not yet suppported")
             # self.con = pyodbc.connect
 
@@ -766,6 +768,7 @@ class DB(object):
             "port": self.port,
             "filename": db_filename,
             "dbname": self.dbname,
+            "dbtype": self.dbtype,
             "limit": self.limit,
         }
         with open(f, 'wb') as credentials_file:
