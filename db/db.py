@@ -1166,8 +1166,11 @@ class DB(object):
         """
         if self.dbtype!="redshift":
             raise Exception("Sorry, feature only available for redshift.")
-        from boto.s3.connection import S3Connection
-        from boto.s3.key import Key
+        try:
+            from boto.s3.connection import S3Connection
+            from boto.s3.key import Key
+        except ImportError:
+            raise Exception("Couldn't find boto library. Please ensure it is installed")
 
         if AWS_ACCESS_KEY is None:
             AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
