@@ -1,7 +1,10 @@
 import threading
 import glob
 import gzip
-from StringIO import StringIO
+try :
+    from StringIO import StringIO  # Python 2.7
+except:
+    from io import StringIO  # Python 3.3+
 import uuid
 import json
 import base64
