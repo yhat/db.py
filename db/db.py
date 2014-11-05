@@ -1125,10 +1125,10 @@ class DB(object):
     def _try_command(self, cmd):
         try:
             self.cur.execute(cmd)
-        except Exception, e:
-            print "Error executing command:"
-            print "\t '%s'" % cmd
-            print "Exception: %s" % str(e)
+        except Exception as e:
+            print ("Error executing command:")
+            print ("\t '%s'" % cmd)
+            print ("Exception: %s" % str(e))
             self.con.rollback()
 
     def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000,
@@ -1292,7 +1292,7 @@ def remove_profile(name):
         except:
             raise Exception("Profile '%s' does not exist. Could not find file %s" % (name, f))
         os.remove(f)
-    except Exception, e:
+    except Exception as e:
         raise Exception("Could not remove profile %s! Excpetion: %s" % (name, str(e)))
 
 
