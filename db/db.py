@@ -13,9 +13,9 @@ import sys
 import pandas as pd
 from prettytable import PrettyTable
 
-from queries import mysql as mysql_templates
-from queries import postgres as postgres_templates
-from queries import sqlite as sqlite_templates
+from .queries import mysql as mysql_templates
+from .queries import postgres as postgres_templates
+from .queries import sqlite as sqlite_templates
 
 
 queries_templates = {
