@@ -29,23 +29,27 @@ queries_templates = {
 # TODO: maybe add warnings?
 try:
     import psycopg2 as pg
-except:
-    pass
+    HAS_PG = True
+except ImportError:
+    HAS_PG = False
 
 try:
     import MySQLdb
-except:
-    pass
+    HAS_MYSQL = True
+except ImportError:
+    HAS_MYSQL = False
 
 try:
     import sqlite3 as sqlite
-except:
-    pass
+    HAS_SQLITE = True
+except ImportError:
+    HAS_SQLITE = False
 
 try:
     import pyodbc
-except:
-    pass
+    HAS_ODBC = True
+except ImportError:
+    HAS_ODBC = False
 
 
 class Column(object):
@@ -669,14 +673,20 @@ class DB(object):
         self._query_templates = queries_templates.get(self.dbtype).queries
 
         if self.dbtype=="postgres" or self.dbtype=="redshift":
+            if not HAS_PG:
+                raise Exception("Couldn't find psycopg2 library. Please ensure it is installed")
             self.con = pg.connect(user=self.username, password=self.password,
                 host=self.hostname, port=self.port, dbname=self.dbname)
             self.cur = self.con.cursor()
         elif self.dbtype=="sqlite":
+            if not HAS_SQLITE:
+                raise Exception("Couldn't find sqlite library. Please ensure it is installed")
             self.con = sqlite.connect(self.filename)
             self.cur = self.con.cursor()
             self._create_sqlite_metatable()
         elif self.dbtype=="mysql":
+            if not HAS_MYSQL:
+                raise Exception("Couldn't find MySQLdb library. Please ensure it is installed")
             creds = {}
             for arg in ["username", "password", "hostname", "port", "dbname"]:
                 if getattr(self, arg):
