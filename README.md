@@ -414,3 +414,6 @@ __Arguments__
 - [ ] intelligent display of number/size returned in query
 - [ ] patsy formulas
 - [x] profile w/ limit
+
+[![image](https://ga-beacon.appspot.com/UA-46996803-1/db.py/README.md)](https://github.com/yhat/db.py)
+
