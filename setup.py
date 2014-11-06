@@ -4,7 +4,7 @@ from setuptools import find_packages
 
 required = [
     "prettytable==0.7.2",
-    "pandas==0.15.0"
+    "pandas"
 ]
 
 setup(
@@ -20,4 +20,22 @@ setup(
     description="a db package that doesn't suck",
     long_description=open("README.rst").read(),
     install_requires=required,
+    classifiers=[
+        # Maturity
+        #   3 - Alpha
+        #   4 - Beta
+        #   5 - Production/Stable
+        'Development Status :: 4 - Beta',
+        # License
+        'License :: OSI Approved :: BSD',
+        # Versions supported
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+    ],
+
 )
