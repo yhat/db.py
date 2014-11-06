@@ -1,7 +1,7 @@
 import threading
 import glob
 import gzip
-try :
+try:
     from StringIO import StringIO  # Python 2.7
 except:
     from io import StringIO  # Python 3.3+
@@ -1364,12 +1364,15 @@ def list_profiles():
     return profiles
 
 
-def remove_profile(name):
+def remove_profile(name, s3=False):
     """
     Removes a profile from your config
     """
     user = os.path.expanduser("~")
-    f = os.path.join(user, ".db.py_" + name)
+    if s3==True:
+        f = os.path.join(user, ".db.py_s3_" + name)
+    else:
+        f = os.path.join(user, ".db.py_" + name)
     try:
         try:
             open(f)
