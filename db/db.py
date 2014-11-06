@@ -1,7 +1,10 @@
 import threading
 import glob
 import gzip
-from StringIO import StringIO
+try:
+    from StringIO import StringIO  # Python 2.7
+except:
+    from io import StringIO  # Python 3.3+
 import uuid
 import json
 import base64
@@ -13,9 +16,9 @@ import sys
 import pandas as pd
 from prettytable import PrettyTable
 
-from queries import mysql as mysql_templates
-from queries import postgres as postgres_templates
-from queries import sqlite as sqlite_templates
+from .queries import mysql as mysql_templates
+from .queries import postgres as postgres_templates
+from .queries import sqlite as sqlite_templates
 
 
 queries_templates = {
@@ -562,7 +565,8 @@ class TableSet(object):
 
 class ColumnSet(object):
     """
-    Set of Columns. Used for displaying search results in terminal/ipython notebook.
+    Set of Columns. Used for displaying search results in terminal/ipython
+    notebook.
     """
     def __init__(self, columns):
         self.columns = columns
@@ -585,6 +589,64 @@ class ColumnSet(object):
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
+
+class S3(object):
+    """
+    Simple object for storing AWS credentials
+    """
+    def __init__(self, access_key, secret_key, profile=None):
+
+        if profile:
+            self.load_credentials(profile)
+        else:
+            self.access_key = access_key
+            self.secret_key = secret_key
+
+    def save_credentials(self, profile):
+        """
+        Saves credentials to a dotfile so you can open them grab them later.
+
+        Parameters
+        ----------
+        profile: str
+            name for your profile (i.e. "dev", "prod")
+        """
+        home = os.path.expanduser("~")
+        filename = os.path.join(home, ".db.py_s3_" + profile)
+        creds = {
+            access_key: self.access_key,
+            secret_key: self.secret_key
+        }
+        with open(filename, 'wb') as f:
+            data = json.dumps(creds)
+            try:
+                f.write(base64.encodestring(data))
+            except:
+                f.write(base64.encodestring(bytes(data, 'utf-8')))
+
+    def load_credentials(self, profile):
+        """
+        Loads crentials for a given profile. Profiles are stored in
+        ~/.db.py_s3_{profile_name} and are a base64 encoded JSON file. This is
+        not to say this a secure way to store sensitive data, but it will
+        probably stop your little sister from spinning up EC2 instances.
+
+        Parameters
+        ----------
+        profile: str
+            identifier/name for your database (i.e. "dev", "prod")
+        """
+        user = os.path.expanduser("~")
+        f = os.path.join(user, ".db.py_s3_" + profile)
+        if os.path.exists(f):
+            creds = json.loads(base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
+            if 'access_key' not in creds:
+                raise Exception("`access_key` not found in s3 profile '%s'" % profile)
+            self.access_key = creds['access_key']
+            if 'access_key' not in creds:
+                raise Exception("`secret_key` not found in s3 profile '%s'" % profile)
+            self.secret_key = creds['secret_key']
+
 
 class DB(object):
     """
@@ -609,6 +671,8 @@ class DB(object):
         path to sqlite database
     dbname: str
         Name of the database
+    schemas: list
+        List of schemas to include. Defaults to all.
     profile: str
         Preconfigured database credentials / profile for how you like your queries
     exclude_system_tables: bool
@@ -635,8 +699,8 @@ class DB(object):
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
     """
     def __init__(self, username=None, password=None, hostname="localhost",
-            port=None, filename=None, dbname=None, dbtype=None, profile="default",
-            exclude_system_tables=True, limit=1000):
+            port=None, filename=None, dbname=None, dbtype=None, schemas=None,
+            profile="default", exclude_system_tables=True, limit=1000):
 
         if port is None:
             if dbtype=="postgres":
@@ -666,6 +730,7 @@ class DB(object):
             self.filename = filename
             self.dbname = dbname
             self.dbtype = dbtype
+            self.schemas = schemas
             self.limit = limit
 
         if self.dbtype is None:
@@ -735,7 +800,9 @@ class DB(object):
         user = os.path.expanduser("~")
         f = os.path.join(user, ".db.py_" + profile)
         if os.path.exists(f):
-            creds = json.loads(base64.decodestring(open(f, 'rb').read()))
+            raw_creds = open(f, 'rb').read()
+            raw_creds = base64.decodestring(raw_creds).decode('utf-8')
+            creds = json.loads(raw_creds)
             self.username = creds.get('username')
             self.password = creds.get('password')
             self.hostname = creds.get('hostname')
@@ -743,6 +810,7 @@ class DB(object):
             self.filename = creds.get('filename')
             self.dbname = creds.get('dbname')
             self.dbtype = creds.get('dbtype')
+            self.schemas = creds.get('schemas')
             self.limit = creds.get('limit')
         else:
             raise Exception("Credentials not configured!")
@@ -770,7 +838,7 @@ class DB(object):
             db_filename = None
 
         user = os.path.expanduser("~")
-        f = os.path.join(user, ".db.py_" + profile)
+        dotfile = os.path.join(user, ".db.py_" + profile)
         creds = {
             "username": self.username,
             "password": self.password,
@@ -779,10 +847,15 @@ class DB(object):
             "filename": db_filename,
             "dbname": self.dbname,
             "dbtype": self.dbtype,
+            "schemas": self.schemas,
             "limit": self.limit,
         }
-        with open(f, 'wb') as credentials_file:
-            credentials_file.write(base64.encodestring(json.dumps(creds)))
+        with open(dotfile, 'wb') as f:
+            data = json.dumps(creds)
+            try:
+                f.write(base64.encodestring(data))
+            except:
+                f.write(base64.encodestring(bytes(data, 'utf-8')))
 
     def find_table(self, search):
         """
@@ -1105,7 +1178,9 @@ class DB(object):
         """
 
         sys.stderr.write("Refreshing schema. Please wait...")
-        if exclude_system_tables==True:
+        if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates:
+            q = self._query_templates['system']['schema_specified'] % str(self.schemas)
+        elif exclude_system_tables==True:
             q = self._query_templates['system']['schema_no_system']
         else:
             q = self._query_templates['system']['schema_with_system']
@@ -1125,14 +1200,15 @@ class DB(object):
     def _try_command(self, cmd):
         try:
             self.cur.execute(cmd)
-        except Exception, e:
-            print "Error executing command:"
-            print "\t '%s'" % cmd
-            print "Exception: %s" % str(e)
+        except Exception as e:
+            print ("Error executing command:")
+            print ("\t '%s'" % cmd)
+            print ("Exception: %s" % str(e))
             self.con.rollback()
 
     def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000,
-                    AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, print_sql=False):
+                    AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, s3=None,
+                    print_sql=False):
         """
         Upload a dataframe to redshift via s3.
 
@@ -1155,6 +1231,8 @@ class DB(object):
         AWS_SECRET_KEY: str
             your aws secrety key. if this is None, the function will try
             and grab AWS_SECRET_KEY from your environment variables
+        s3: S3
+            alternative to using keys, you can use an S3 object
         print_sql: bool (False)
             option for printing sql statement that will be executed
 
@@ -1163,9 +1241,15 @@ class DB(object):
         """
         if self.dbtype!="redshift":
             raise Exception("Sorry, feature only available for redshift.")
-        from boto.s3.connection import S3Connection
-        from boto.s3.key import Key
+        try:
+            from boto.s3.connection import S3Connection
+            from boto.s3.key import Key
+        except ImportError:
+            raise Exception("Couldn't find boto library. Please ensure it is installed")
 
+        if s3 is not None:
+            AWS_ACCESS_KEY = s3.access_key
+            AWS_SECRET_KEY = s3.secret_key
         if AWS_ACCESS_KEY is None:
             AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
         if AWS_SECRET_KEY is None:
@@ -1280,19 +1364,22 @@ def list_profiles():
     return profiles
 
 
-def remove_profile(name):
+def remove_profile(name, s3=False):
     """
     Removes a profile from your config
     """
     user = os.path.expanduser("~")
-    f = os.path.join(user, ".db.py_" + name)
+    if s3==True:
+        f = os.path.join(user, ".db.py_s3_" + name)
+    else:
+        f = os.path.join(user, ".db.py_" + name)
     try:
         try:
             open(f)
         except:
             raise Exception("Profile '%s' does not exist. Could not find file %s" % (name, f))
         os.remove(f)
-    except Exception, e:
+    except Exception as e:
         raise Exception("Could not remove profile %s! Excpetion: %s" % (name, str(e)))
 
 
@@ -1304,4 +1391,3 @@ def DemoDB():
     _ROOT = os.path.abspath(os.path.dirname(__file__))
     chinook = os.path.join(_ROOT, 'data', "chinook.sqlite")
     return DB(filename=chinook, dbtype="sqlite")
-

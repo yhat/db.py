@@ -4,13 +4,12 @@ from setuptools import find_packages
 
 required = [
     "prettytable==0.7.2",
-    "pandas==0.15.0",
-    "boto==2.30.0"
+    "pandas==0.15.0"
 ]
 
 setup(
     name="db.py",
-    version="0.2.5",
+    version="0.2.6",
     author="Greg Lamp",
     author_email="greg@yhathq.com",
     url="https://github.com/yhat/db.py",
