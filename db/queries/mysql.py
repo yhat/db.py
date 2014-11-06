@@ -31,6 +31,15 @@ queries = {
                 from
                     information_schema.columns;
                 """,
+        "schema_specified": """
+                select
+                    table_name
+                    , column_name
+                    , udt_name
+                from
+                    information_schema.columns
+                where table_schema in (%s);
+                """,
         "foreign_keys_for_table": """
         select
             column_name
