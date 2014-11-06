@@ -565,7 +565,7 @@ class TableSet(object):
 
 class ColumnSet(object):
     """
-    Set of Columns. Used for displaying search results in terminal/ipython 
+    Set of Columns. Used for displaying search results in terminal/ipython
     notebook.
     """
     def __init__(self, columns):
@@ -618,13 +618,17 @@ class S3(object):
             secret_key: self.secret_key
         }
         with open(filename, 'wb') as f:
-            f.write(base64.encodestring(json.dumps(creds)))
+            data = json.dumps(creds)
+            try:
+                f.write(base64.encodestring(data))
+            except:
+                f.write(base64.encodestring(bytes(data, 'utf-8')))
 
     def load_credentials(self, profile):
         """
         Loads crentials for a given profile. Profiles are stored in
-        ~/.db.py_s3_{profile_name} and are a base64 encoded JSON file. This is 
-        not to say this a secure way to store sensitive data, but it will 
+        ~/.db.py_s3_{profile_name} and are a base64 encoded JSON file. This is
+        not to say this a secure way to store sensitive data, but it will
         probably stop your little sister from spinning up EC2 instances.
 
         Parameters
@@ -635,7 +639,7 @@ class S3(object):
         user = os.path.expanduser("~")
         f = os.path.join(user, ".db.py_s3_" + profile)
         if os.path.exists(f):
-            creds = json.loads(base64.decodestring(open(f, 'rb').read()))
+            creds = json.loads(base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
             if 'access_key' not in creds:
                 raise Exception("`access_key` not found in s3 profile '%s'" % profile)
             self.access_key = creds['access_key']
@@ -796,7 +800,9 @@ class DB(object):
         user = os.path.expanduser("~")
         f = os.path.join(user, ".db.py_" + profile)
         if os.path.exists(f):
-            creds = json.loads(base64.decodestring(open(f, 'rb').read()))
+            raw_creds = open(f, 'rb').read()
+            raw_creds = base64.decodestring(raw_creds).decode('utf-8')
+            creds = json.loads(raw_creds)
             self.username = creds.get('username')
             self.password = creds.get('password')
             self.hostname = creds.get('hostname')
@@ -832,7 +838,7 @@ class DB(object):
             db_filename = None
 
         user = os.path.expanduser("~")
-        f = os.path.join(user, ".db.py_" + profile)
+        dotfile = os.path.join(user, ".db.py_" + profile)
         creds = {
             "username": self.username,
             "password": self.password,
@@ -844,8 +850,12 @@ class DB(object):
             "schemas": self.schemas,
             "limit": self.limit,
         }
-        with open(f, 'wb') as credentials_file:
-            credentials_file.write(base64.encodestring(json.dumps(creds)))
+        with open(dotfile, 'wb') as f:
+            data = json.dumps(creds)
+            try:
+                f.write(base64.encodestring(data))
+            except:
+                f.write(base64.encodestring(bytes(data, 'utf-8')))
 
     def find_table(self, search):
         """
