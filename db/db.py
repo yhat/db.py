@@ -565,7 +565,8 @@ class TableSet(object):
 
 class ColumnSet(object):
     """
-    Set of Columns. Used for displaying search results in terminal/ipython notebook.
+    Set of Columns. Used for displaying search results in terminal/ipython 
+    notebook.
     """
     def __init__(self, columns):
         self.columns = columns
@@ -590,6 +591,9 @@ class ColumnSet(object):
         return self._tablify().get_html_string()
 
 class S3(object):
+    """
+    Simple object for storing AWS credentials
+    """
     def __init__(self, access_key, secret_key, profile=None):
 
         if profile:
@@ -600,7 +604,12 @@ class S3(object):
 
     def save_credentials(self, profile):
         """
-        Saves credentials to a dotfile
+        Saves credentials to a dotfile so you can open them grab them later.
+
+        Parameters
+        ----------
+        profile: str
+            name for your profile (i.e. "dev", "prod")
         """
         home = os.path.expanduser("~")
         filename = os.path.join(home, ".db.py_s3_" + profile)
@@ -612,6 +621,17 @@ class S3(object):
             f.write(base64.encodestring(json.dumps(creds)))
 
     def load_credentials(self, profile):
+        """
+        Loads crentials for a given profile. Profiles are stored in
+        ~/.db.py_s3_{profile_name} and are a base64 encoded JSON file. This is 
+        not to say this a secure way to store sensitive data, but it will 
+        probably stop your little sister from spinning up EC2 instances.
+
+        Parameters
+        ----------
+        profile: str
+            identifier/name for your database (i.e. "dev", "prod")
+        """
         user = os.path.expanduser("~")
         f = os.path.join(user, ".db.py_s3_" + profile)
         if os.path.exists(f):
