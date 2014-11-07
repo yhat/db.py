@@ -27,7 +27,7 @@ setup(
         #   5 - Production/Stable
         'Development Status :: 4 - Beta',
         # License
-        'License :: OSI Approved :: BSD License'
+        'License :: OSI Approved :: BSD License',
         # Versions supported
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
