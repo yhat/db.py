@@ -56,11 +56,13 @@ except ImportError:
 
 
 class Column(object):
+
     """
     A Columns is an in-memory reference to a column in a particular table. You
     can use it to do some basic DB exploration and you can also use it to
     execute simple queries.
     """
+
     def __init__(self, con, query_templates, table, name, dtype):
         self._con = con
         self._query_templates = query_templates
@@ -129,7 +131,8 @@ class Column(object):
         1              Stuttgart
         Name: City, dtype: object
         """
-        q = self._query_templates['column']['head'] % (self.name, self.table, n)
+        q = self._query_templates['column'][
+            'head'] % (self.name, self.table, n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def all(self):
@@ -230,14 +233,18 @@ class Column(object):
         9    Santana Feat. The Project G&B
         Name: Name, dtype: object
         """
-        q = self._query_templates['column']['sample'] % (self.name, self.table, n)
+        q = self._query_templates['column'][
+            'sample'] % (self.name, self.table, n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
+
 class Table(object):
+
     """
     A Table is an in-memory reference to a table in a database. You can use it to get more info
     about the columns, schema, etc. of a table and you can also use it to execute queries.
     """
+
     def __init__(self, con, query_templates, name, cols):
         self.name = name
         self._con = con
@@ -253,20 +260,24 @@ class Table(object):
                 attr = "_" + col.name
             setattr(self, attr, col)
 
-        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'] % (self.name))
+        self._cur.execute(
+            self._query_templates['system']['foreign_keys_for_table'] % (self.name))
         for (column_name, foreign_table, foreign_column) in self._cur:
             col = getattr(self, column_name)
-            foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type)
+            foreign_key = Column(
+                con, queries_templates, foreign_table, foreign_column, col.type)
             self.foreign_keys.append(foreign_key)
             col.foreign_keys.append(foreign_key)
             setattr(self, column_name, col)
 
         self.foreign_keys = ColumnSet(self.foreign_keys)
 
-        self._cur.execute(self._query_templates['system']['ref_keys_for_table'] % (self.name))
+        self._cur.execute(
+            self._query_templates['system']['ref_keys_for_table'] % (self.name))
         for (column_name, ref_table, ref_column) in self._cur:
             col = getattr(self, column_name)
-            ref_key = Column(con, queries_templates, ref_table, ref_column, col.type)
+            ref_key = Column(
+                con, queries_templates, ref_table, ref_column, col.type)
             self.ref_keys.append(ref_key)
             col.ref_keys.append(ref_key)
             setattr(self, column_name, col)
@@ -280,14 +291,15 @@ class Table(object):
         tbl.align["Foreign Keys"] = "l"
         tbl.align["Reference Keys"] = "l"
         for col in self._columns:
-            tbl.add_row([col.name, col.type, col._str_foreign_keys(), col._str_ref_keys()])
+            tbl.add_row(
+                [col.name, col.type, col._str_foreign_keys(), col._str_ref_keys()])
         return tbl
 
     def __repr__(self):
         tbl = str(self._tablify())
         r = tbl.split('\n')[0]
-        brk = "+" + "-"*(len(r)-2) + "+"
-        title = "|" + self.name.center(len(r)-2) + "|"
+        brk = "+" + "-" * (len(r) - 2) + "+"
+        title = "|" + self.name.center(len(r) - 2) + "|"
         return brk + "\n" + title + "\n" + tbl
 
     def __str__(self):
@@ -333,7 +345,8 @@ class Table(object):
         # select name & composer from the Track table
         >>> df = db.tables.Track.select("Name", "Composer")
         """
-        q = self._query_templates['table']['select'] % (", ".join(args), self.name)
+        q = self._query_templates['table'][
+            'select'] % (", ".join(args), self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def head(self, n=6):
@@ -462,7 +475,7 @@ class Table(object):
         >>> len(db.tables.Track.unique("GenreId", "MediaTypeId"))
             38
         """
-        if len(args)==0:
+        if len(args) == 0:
             columns = "*"
         else:
             columns = ", ".join(args)
@@ -531,9 +544,11 @@ class Table(object):
 
 
 class TableSet(object):
+
     """
     Set of Tables. Used for displaying search results in terminal/ipython notebook.
     """
+
     def __init__(self, tables):
         for tbl in tables:
             setattr(self, tbl.name, tbl)
@@ -551,23 +566,25 @@ class TableSet(object):
             column_names = ", ".join(column_names)
             pretty_column_names = ""
             for i in range(0, len(column_names), 80):
-                pretty_column_names += column_names[i:(i+80)] + "\n"
+                pretty_column_names += column_names[i:(i + 80)] + "\n"
             pretty_column_names = pretty_column_names.strip()
             tbl.add_row([table.name, pretty_column_names])
         return tbl
 
     def __repr__(self):
-        tbl = str(self._tablify())
-        return tbl
+        return str(self._tablify())
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
 
+
 class ColumnSet(object):
+
     """
     Set of Columns. Used for displaying search results in terminal/ipython
     notebook.
     """
+
     def __init__(self, columns):
         self.columns = columns
 
@@ -590,10 +607,13 @@ class ColumnSet(object):
     def _repr_html_(self):
         return self._tablify().get_html_string()
 
+
 class S3(object):
+
     """
     Simple object for storing AWS credentials
     """
+
     def __init__(self, access_key, secret_key, profile=None):
 
         if profile:
@@ -614,8 +634,8 @@ class S3(object):
         home = os.path.expanduser("~")
         filename = os.path.join(home, ".db.py_s3_" + profile)
         creds = {
-            access_key: self.access_key,
-            secret_key: self.secret_key
+            'access_key': self.access_key,
+            'secret_key': self.secret_key
         }
         with open(filename, 'wb') as f:
             data = json.dumps(creds)
@@ -639,16 +659,20 @@ class S3(object):
         user = os.path.expanduser("~")
         f = os.path.join(user, ".db.py_s3_" + profile)
         if os.path.exists(f):
-            creds = json.loads(base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
+            creds = json.loads(
+                base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
             if 'access_key' not in creds:
-                raise Exception("`access_key` not found in s3 profile '%s'" % profile)
+                raise Exception(
+                    "`access_key` not found in s3 profile '%s'" % profile)
             self.access_key = creds['access_key']
             if 'access_key' not in creds:
-                raise Exception("`secret_key` not found in s3 profile '%s'" % profile)
+                raise Exception(
+                    "`secret_key` not found in s3 profile '%s'" % profile)
             self.secret_key = creds['secret_key']
 
 
 class DB(object):
+
     """
     Utility for exploring and querying a database.
 
@@ -689,38 +713,37 @@ class DB(object):
     Examples
     --------
     >>> from db import DB
-    >>> db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com",
-                port=5432, dbname="muppets", dbtype="postgres")
-    >>> db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131",
-                port=5432, dbname="muppets_redshift", dbtype="redshift")
-    >>> db = DB(username="dev", hostname="localhost",
-                port=5432, dbname="devdb", dbtype="postgres")
+    >>> db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com", port=5432, dbname="muppets", dbtype="postgres")
+    >>> db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131", port=5432, dbname="muppets_redshift", dbtype="redshift")
+    >>> db = DB(username="dev", hostname="localhost", port=5432, dbname="devdb", dbtype="postgres")
     >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
     """
+
     def __init__(self, username=None, password=None, hostname="localhost",
-            port=None, filename=None, dbname=None, dbtype=None, schemas=None,
-            profile="default", exclude_system_tables=True, limit=1000):
+                 port=None, filename=None, dbname=None, dbtype=None, schemas=None,
+                 profile="default", exclude_system_tables=True, limit=1000):
 
         if port is None:
-            if dbtype=="postgres":
+            if dbtype == "postgres":
                 port = 5432
-            elif dbtype=="redshift":
+            elif dbtype == "redshift":
                 port = 5439
-            elif dbtype=="mysql":
+            elif dbtype == "mysql":
                 port = 3306
-            elif dbtype=="sqlite":
+            elif dbtype == "sqlite":
                 port = None
-            elif dbtype=="mssql":
+            elif dbtype == "mssql":
                 port = 1433
             elif profile is not None:
                 pass
             else:
-                raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
+                raise Exception(
+                    "Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
-        if dbtype!="sqlite" and username is None:
+        if dbtype != "sqlite" and username is None:
             self.load_credentials(profile)
-        elif dbtype=="sqlite" and filename is None:
+        elif dbtype == "sqlite" and filename is None:
             self.load_credentials(profile)
         else:
             self.username = username
@@ -734,40 +757,44 @@ class DB(object):
             self.limit = limit
 
         if self.dbtype is None:
-            raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
+            raise Exception(
+                "Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
         self._query_templates = queries_templates.get(self.dbtype).queries
 
-        if self.dbtype=="postgres" or self.dbtype=="redshift":
+        if self.dbtype == "postgres" or self.dbtype == "redshift":
             if not HAS_PG:
-                raise Exception("Couldn't find psycopg2 library. Please ensure it is installed")
+                raise Exception(
+                    "Couldn't find psycopg2 library. Please ensure it is installed")
             self.con = pg.connect(user=self.username, password=self.password,
-                host=self.hostname, port=self.port, dbname=self.dbname)
+                                  host=self.hostname, port=self.port, dbname=self.dbname)
             self.cur = self.con.cursor()
-        elif self.dbtype=="sqlite":
+        elif self.dbtype == "sqlite":
             if not HAS_SQLITE:
-                raise Exception("Couldn't find sqlite library. Please ensure it is installed")
+                raise Exception(
+                    "Couldn't find sqlite library. Please ensure it is installed")
             self.con = sqlite.connect(self.filename)
             self.cur = self.con.cursor()
             self._create_sqlite_metatable()
-        elif self.dbtype=="mysql":
+        elif self.dbtype == "mysql":
             if not HAS_MYSQL:
-                raise Exception("Couldn't find MySQLdb library. Please ensure it is installed")
+                raise Exception(
+                    "Couldn't find MySQLdb library. Please ensure it is installed")
             creds = {}
             for arg in ["username", "password", "hostname", "port", "dbname"]:
                 if getattr(self, arg):
                     value = getattr(self, arg)
-                    if arg=="username":
+                    if arg == "username":
                         arg = "user"
-                    elif arg=="password":
+                    elif arg == "password":
                         arg = "passwd"
-                    elif arg=="dbname":
+                    elif arg == "dbname":
                         arg = "db"
-                    elif arg=="hostname":
+                    elif arg == "hostname":
                         arg = "host"
                     creds[arg] = value
             self.con = MySQLdb.connect(**creds)
             self.cur = self.con.cursor()
-        elif self.dbtype=="mssql":
+        elif self.dbtype == "mssql":
             raise Exception("MS SQL not yet suppported")
             # self.con = pyodbc.connect
 
@@ -824,11 +851,9 @@ class DB(object):
         profile: str
             (optional) identifier/name for your database (i.e. "dw", "prod")
 
-        >>> db = DB(username="hank", password="foo",
-        >>>         hostname="prod.mardukas.com", dbname="bar")
+        >>> db = DB(username="hank", password="foo", hostname="prod.mardukas.com", dbname="bar")
         >>> db.save_credentials(profile="production")
-        >>> db = DB(username="hank", password="foo",
-        >>>         hostname="staging.mardukas.com", dbname="bar")
+        >>> db = DB(username="hank", password="foo",hostname="staging.mardukas.com", dbname="bar")
         >>> db.save_credentials(profile="staging")
         >>> db = DB(profile="staging")
         """
@@ -964,15 +989,11 @@ class DB(object):
     def _assign_limit(self, q, limit=1000):
         # postgres, mysql, & sqlite
         if self.dbtype in ["postgres", "redshift", "sqlite", "mysql"]:
-            if limit:
-                q = q.rstrip().rstrip(";")
-                q = "select * from (%s) q limit %d" % (q, limit)
-            return q
-        # mssql
-        else:
-            if limit:
-                q = "select top %d from (%s) q" % (limit, q)
-                return q
+            q = q.rstrip().rstrip(";")
+            q = "select * from (%s) q limit %d" % (q, limit)
+        else:  # mssql
+            q = "select top %d from (%s) q" % (limit, q)
+        return q
 
     def query(self, q, limit=None):
         """
@@ -988,6 +1009,7 @@ class DB(object):
         Examples
         --------
         >>> from db import DemoDB
+        >>> db = DemoDB()
         >>> db.query("select * from Track")
            TrackId                                     Name  AlbumId  MediaTypeId  \
         0        1  For Those About To Rock (We Salute You)        1            1
@@ -1040,17 +1062,7 @@ class DB(object):
         7   6852860       0.99
         8   6599424       0.99
         9   8611245       0.99
-        >>> q = '''
-        SELECT
-          a.Title
-          , t.Name
-          , t.UnitPrice
-        FROM
-          Album a
-        INNER JOIN
-          Track t
-            on a.AlbumId = t.AlbumId;
-        '''
+        >>> q = '''SELECT a.Title, t.Name, t.UnitPrice FROM Album a INNER JOIN Track t on a.AlbumId = t.AlbumId;'''
         >>> db.query(q, limit=10)
                                            Title  \
         0  For Those About To Rock We Salute You
@@ -1076,7 +1088,7 @@ class DB(object):
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
         """
-        if limit==False:
+        if limit == False:
             pass
         else:
             q = self._assign_limit(q, limit)
@@ -1094,17 +1106,8 @@ class DB(object):
         Examples
         --------
         >>> from db import DemoDB
-        >>> q = '''
-        SELECT
-          a.Title
-          , t.Name
-          , t.UnitPrice
-        FROM
-          Album a
-        INNER JOIN
-          Track t
-            on a.AlbumId = t.AlbumId;
-        '''
+        >>> db = DemoDB()
+        >>> q = '''SELECT a.Title , t.Name, t.UnitPrice FROM Album a INNER JOIN Track t on a.AlbumId = t.AlbumId;'''
         >>> with open("myscript.sql", "w") as f:
         ...    f.write(q)
         ...
@@ -1142,20 +1145,25 @@ class DB(object):
         """
         sys.stderr.write("Indexing schema. This will take a second...")
         rows_to_insert = []
-        tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
+        tables = [row[0] for row in self.cur.execute(
+            "select name from sqlite_master where type='table';")]
         for table in tables:
             for row in self.cur.execute("pragma table_info(%s)" % table):
                 rows_to_insert.append((table, row[1], row[2]))
         # find for table and column names
         self.cur.execute("drop table if exists tmp_dbpy_schema;")
-        self.cur.execute("create temp table tmp_dbpy_schema(table_name varchar, column_name varchar, data_type varchar);")
+        self.cur.execute(
+            "create temp table tmp_dbpy_schema(table_name varchar, column_name varchar, data_type varchar);")
         for row in rows_to_insert:
-            self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
-        self.cur.execute("SELECT name, sql  FROM sqlite_master where sql like '%REFERENCES%';")
+            self.cur.execute(
+                "insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
+        self.cur.execute(
+            "SELECT name, sql  FROM sqlite_master where sql like '%REFERENCES%';")
 
         # find for foreign keys
         self.cur.execute("drop table if exists tmp_dbpy_foreign_keys;")
-        self.cur.execute("create temp table tmp_dbpy_foreign_keys(table_name varchar, column_name varchar, foreign_table varchar, foreign_column varchar);")
+        self.cur.execute(
+            "create temp table tmp_dbpy_foreign_keys(table_name varchar, column_name varchar, foreign_table varchar, foreign_column varchar);")
         foreign_keys = []
         self.cur.execute("SELECT name, sql  FROM sqlite_master ;")
         for (table_name, sql) in self.cur:
@@ -1163,7 +1171,8 @@ class DB(object):
             if sql is None:
                 continue
             for (column_name, foreign_table, foreign_key) in re.findall(rgx, sql):
-                foreign_keys.append((table_name, column_name, foreign_table, foreign_key))
+                foreign_keys.append(
+                    (table_name, column_name, foreign_table, foreign_key))
         for row in foreign_keys:
             sql_insert = "insert into tmp_dbpy_foreign_keys(table_name, column_name, foreign_table, foreign_column) values('%s', '%s', '%s', '%s');"
             self.cur.execute(sql_insert % row)
@@ -1179,22 +1188,25 @@ class DB(object):
 
         sys.stderr.write("Refreshing schema. Please wait...")
         if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates:
-            q = self._query_templates['system']['schema_specified'] % str(self.schemas)
-        elif exclude_system_tables==True:
+            q = self._query_templates['system'][
+                'schema_specified'] % str(self.schemas)
+        elif exclude_system_tables == True:
             q = self._query_templates['system']['schema_no_system']
         else:
             q = self._query_templates['system']['schema_with_system']
 
         tables = set()
         self.cur.execute(q)
-        cols = []
+        # cols = []
         tables = {}
         for (table_name, column_name, data_type)in self.cur:
             if table_name not in tables:
                 tables[table_name] = []
-            tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type))
+            tables[table_name].append(
+                Column(self.con, self._query_templates, table_name, column_name, data_type))
 
-        self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
+        self.tables = TableSet(
+            [Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
         sys.stderr.write("done!\n")
 
     def _try_command(self, cmd):
@@ -1239,13 +1251,14 @@ class DB(object):
         Examples
         --------
         """
-        if self.dbtype!="redshift":
+        if self.dbtype != "redshift":
             raise Exception("Sorry, feature only available for redshift.")
         try:
             from boto.s3.connection import S3Connection
             from boto.s3.key import Key
         except ImportError:
-            raise Exception("Couldn't find boto library. Please ensure it is installed")
+            raise Exception(
+                "Couldn't find boto library. Please ensure it is installed")
 
         if s3 is not None:
             AWS_ACCESS_KEY = s3.access_key
@@ -1255,9 +1268,11 @@ class DB(object):
         if AWS_SECRET_KEY is None:
             AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
         if AWS_ACCESS_KEY is None:
-            raise Exception("Must specify AWS_ACCESS_KEY as either function argument or as an environment variable `AWS_ACCESS_KEY`")
+            raise Exception(
+                "Must specify AWS_ACCESS_KEY as either function argument or as an environment variable `AWS_ACCESS_KEY`")
         if AWS_SECRET_KEY is None:
-            raise Exception("Must specify AWS_SECRET_KEY as either function argument or as an environment variable `AWS_SECRET_KEY`")
+            raise Exception(
+                "Must specify AWS_SECRET_KEY as either function argument or as an environment variable `AWS_SECRET_KEY`")
 
         conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
         bucket_name = "dbpy-%s" % str(uuid.uuid4())
@@ -1265,19 +1280,21 @@ class DB(object):
         # we're going to chunk the file into pieces. according to amazon, this is
         # much faster when it comes time to run the \COPY statment.
         #
-        # see http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
+        # see
+        # http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
         sys.stderr.write("Transfering %s to s3 in chunks" % name)
         len_df = len(df)
         chunks = range(0, len_df, chunk_size)
+
         def upload_chunk(i):
-            conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
-            chunk = df[i:(i+chunk_size)]
+            # conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+            chunk = df[i:(i + chunk_size)]
             k = Key(bucket)
             k.key = 'data-%d-%d.csv.gz' % (i, i + chunk_size)
             k.set_metadata('parent', 'db.py')
             out = StringIO()
             with gzip.GzipFile(fileobj=out, mode="w") as f:
-                  f.write(chunk.to_csv(index=False, encoding='utf-8'))
+                f.write(chunk.to_csv(index=False, encoding='utf-8'))
             k.set_contents_from_string(out.getvalue())
             sys.stderr.write(".")
             return i
@@ -1331,6 +1348,7 @@ class DB(object):
         conn.delete_bucket(bucket_name)
         sys.stderr.write("done!")
 
+
 def list_profiles():
     """
     Lists all of the database profiles available
@@ -1369,7 +1387,7 @@ def remove_profile(name, s3=False):
     Removes a profile from your config
     """
     user = os.path.expanduser("~")
-    if s3==True:
+    if s3 == True:
         f = os.path.join(user, ".db.py_s3_" + name)
     else:
         f = os.path.join(user, ".db.py_" + name)
@@ -1377,10 +1395,12 @@ def remove_profile(name, s3=False):
         try:
             open(f)
         except:
-            raise Exception("Profile '%s' does not exist. Could not find file %s" % (name, f))
+            raise Exception(
+                "Profile '%s' does not exist. Could not find file %s" % (name, f))
         os.remove(f)
     except Exception as e:
-        raise Exception("Could not remove profile %s! Excpetion: %s" % (name, str(e)))
+        raise Exception(
+            "Could not remove profile %s! Excpetion: %s" % (name, str(e)))
 
 
 def DemoDB():
