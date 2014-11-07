@@ -9,7 +9,7 @@ required = [
 
 setup(
     name="db.py",
-    version="0.2.6",
+    version="0.2.7",
     author="Greg Lamp",
     author_email="greg@yhathq.com",
     url="https://github.com/yhat/db.py",
