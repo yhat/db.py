@@ -493,4 +493,8 @@ TODO
 -  [ ] patsy formulas
 -  [x] profile w/ limit
 
+|image|
+
 .. |image0| image:: https://raw.githubusercontent.com/yhat/db.py/master/examples/ipython.png
+.. |image| image:: https://ga-beacon.appspot.com/UA-46996803-1/db.py/README.md
+   :target: https://github.com/yhat/db.py
