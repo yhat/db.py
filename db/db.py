@@ -614,8 +614,8 @@ class S3(object):
         home = os.path.expanduser("~")
         filename = os.path.join(home, ".db.py_s3_" + profile)
         creds = {
-            access_key: self.access_key,
-            secret_key: self.secret_key
+            "access_key": self.access_key,
+            "secret_key": self.secret_key
         }
         with open(filename, 'wb') as f:
             data = json.dumps(creds)
