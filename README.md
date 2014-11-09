@@ -394,7 +394,7 @@ __Arguments__
 ```
 
 ## Contributing
-See either the TODO below or [Adding a Database](./docs/adding-a-database.md).
+See either the TODO below or [Adding a Database](./docs/adding-a-db-checklist.md).
 
 ## TODO
 - [x] Switch to newer version of pandas sql api
