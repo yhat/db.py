@@ -465,6 +465,12 @@ Columns
     # returns all columns have an "e" and are NVARCHAR/INTEGERS
     >>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) 
 
+Contributing
+------------
+
+See either the TODO below or `Adding a
+Database <./docs/adding-a-db-checklist.md>`__.
+
 TODO
 ----
 
@@ -475,7 +481,7 @@ TODO
    -  [x] sqlite
    -  [x] redshift
    -  [x] mysql
-   -  [ ] mssql (going to be a little trickier since i don't have one)
+   -  [x] mssql (going to be a little trickier since i don't have one)
 
 -  [x] publish examples to nbviewer
 -  [x] improve documentation and readme
@@ -487,7 +493,7 @@ TODO
    -  [x] sqlite
    -  [x] redshift
    -  [x] mysql
-   -  [ ] mssql
+   -  [x] mssql
 
 -  [ ] intelligent display of number/size returned in query
 -  [ ] patsy formulas
