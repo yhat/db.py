@@ -19,6 +19,7 @@ from prettytable import PrettyTable
 from .queries import mysql as mysql_templates
 from .queries import postgres as postgres_templates
 from .queries import sqlite as sqlite_templates
+from .queries import mssql as mssql_templates
 
 
 queries_templates = {
@@ -26,6 +27,7 @@ queries_templates = {
     "postgres": postgres_templates,
     "redshift": postgres_templates,
     "sqlite": sqlite_templates,
+    "mssql": mssql_templates,
 }
 
 # attempt to import the relevant database libraries
@@ -697,6 +699,7 @@ class DB(object):
                 port=5432, dbname="devdb", dbtype="postgres")
     >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
+    >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql")
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
@@ -718,7 +721,7 @@ class DB(object):
             else:
                 raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
-        if dbtype!="sqlite" and username is None:
+        if not dbtype in ("sqlite", "mssql") and username is None:
             self.load_credentials(profile)
         elif dbtype=="sqlite" and filename is None:
             self.load_credentials(profile)
@@ -768,8 +771,24 @@ class DB(object):
             self.con = MySQLdb.connect(**creds)
             self.cur = self.con.cursor()
         elif self.dbtype=="mssql":
-            raise Exception("MS SQL not yet suppported")
-            # self.con = pyodbc.connect
+            if not HAS_ODBC:
+                raise Exception("Couldn't find pyodbc library. Please ensure it is installed")
+
+            base_con = "Driver={0};Server={server};Database={database};".format(
+                "SQL Server",
+                server=self.hostname or "localhost",
+                database=self.dbname or ''
+            )
+            conn_str = ((self.username and self.password) and "{}{}".format(
+                base_con,
+                "User Id={username};Password={password};".format(
+                    username=self.username,
+                    password=self.password
+                )
+            ) or "{}{}".format(base_con, "Trusted_Connection=Yes;"))
+
+            self.con = pyodbc.connect(conn_str)
+            self.cur = self.con.cursor()
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
@@ -971,7 +990,7 @@ class DB(object):
         # mssql
         else:
             if limit:
-                q = "select top %d from (%s) q" % (limit, q)
+                q = "select top %d * from (%s) q" % (limit, q)
                 return q
 
     def query(self, q, limit=None):
