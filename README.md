@@ -269,7 +269,7 @@ __Arguments__
 - *port*: port the database is running on (i.e. 5432)
 - *dbname*: name of the database (i.e. `hanksdb`)
 - *filename*: path to sqlite database (i.e. `baseball-archive-2012.sqlite`, `employees.db`)
-- *dbtype*: type of database you're connecting to (postgres, mysql, sqlite, redshfit)
+- *dbtype*: type of database you're connecting to (postgres, mysql, sqlite, redshift)
 - *profile*: name of the profile you want to use to connect. using this negates the need to specify any other arguments
 - *exclude_system_tables*: whether or not to load schema information for internal tables. for example, postgres has a bunch of tables prefixed with `pg_` that you probably don't actually care about. on the other had if you're administrating a database, you might want to query these tables
 - *limit*: default number of records to return in a query. This is used by the DB.query method. You can override it by adding limit={X} to the `query` method, or by passing an argument to `DB()`. None indicates that there will be no limit (That's right, you'll be limitless. Bradley Cooper style.)
