@@ -19,7 +19,7 @@ queries = {
             select
                 column_name
                 , foreign_table as foreign_table_name
-                , foreign_column as foreign_colum_name
+                , foreign_column as foreign_column_name
             from
                 tmp_dbpy_foreign_keys
             where
@@ -29,7 +29,7 @@ queries = {
             select
                 column_name
                 , foreign_table as foreign_table_name
-                , foreign_column as foreign_colum_name
+                , foreign_column as foreign_column_name
             from
                 tmp_dbpy_foreign_keys
             where
