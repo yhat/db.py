@@ -1,13 +1,13 @@
 # db.py
 - [What is it](#what-is-it)
-- [Databases Supported](./#databases-supported)
-- [Features](./#dbpy-lets-you)
-- [Quickstart](./#quickstart)
-       - [Installation](./#installation)
-       - [Demo](./#demo)
-- [How To](./#how-two)
-- [Contributing](./#contributing)
-- [TODO](./#todo)
+- [Databases Supported](#databases-supported)
+- [Features](#dbpy-lets-you)
+- [Quickstart](#quickstart)
+       - [Installation](#installation)
+       - [Demo](#demo)
+- [How To](#how-two)
+- [Contributing](#contributing)
+- [TODO](#todo)
 
 ## What is it?
 `db.py` is an easier way to interact with your databases. It makes it easier to explore tables, columns, views, etc. It puts the emphasis on user interaction, information display, and providing easy to use helper functions.
