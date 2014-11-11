@@ -1,5 +1,5 @@
 # db.py
-- [What is it](./#what-is-it)
+- [What is it](#what-is-it)
 - [Databases Supported](./#databases-supported)
 - [Features](./#dbpy-lets-you)
 - [Quickstart](./#quickstart)
