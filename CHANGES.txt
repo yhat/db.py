@@ -1,0 +1,15 @@
+0.3
+=====
+- support for Oracle & MS SQL
+- improved requirements handling
+
+0.2
+=====
+- display foreign key references
+- support for Redshift
+- upload to Redshift
+- profiles bugfix
+
+0.1
+=====
+- support for PostgreSQL, SQLite, & MySQL
