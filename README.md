@@ -5,7 +5,7 @@
 - [Quickstart](#quickstart)
        - [Installation](#installation)
        - [Demo](#demo)
-- [How To](#how-two)
+- [How To](#how-to)
 - [Contributing](#contributing)
 - [TODO](#todo)
 
