@@ -1,17 +1,17 @@
-import threading
+import base64
 import glob
 import gzip
 try:
     from StringIO import StringIO  # Python 2.7
 except:
     from io import StringIO  # Python 3.3+
-import uuid
+import importlib
 import json
-import base64
-import math
-import re
 import os
+import re
 import sys
+import threading
+import uuid
 
 import pandas as pd
 from prettytable import PrettyTable
@@ -28,6 +28,14 @@ queries_templates = {
     "redshift": postgres_templates,
     "sqlite": sqlite_templates,
     "mssql": mssql_templates,
+}
+
+engine_drivers = {
+    "mysql": ("MySQLdb", "pymysql"),
+    "postgres": ("psycopg2",),
+    "redshift": ("psycopg2",),
+    "sqlite": ("sqlite3",),
+    "mssql": ("pyodbc",),
 }
 
 # attempt to import the relevant database libraries
@@ -701,20 +709,37 @@ class DB(object):
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
     >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql")
     """
+    def _load_driver(self):
+        found_driver = None
+        for driver in self.db_drivers:
+            try:
+                found_driver = importlib.import_module(driver)
+                break
+            except ImportError:
+                continue
+        if found_driver is None:
+            raise Exception('Could not load any database libraries from {!r}'.format(self.db_drivers))
+        return found_driver
+
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
             profile="default", exclude_system_tables=True, limit=1000):
 
+        db_drivers = engine_drivers.get(dbtype)
+        if db_drivers is None:
+            raise Exception("DB type '{}' is not supported".format(dbtype))
+        self.db_drivers = db_drivers
+
         if port is None:
-            if dbtype=="postgres":
+            if dbtype == "postgres":
                 port = 5432
-            elif dbtype=="redshift":
+            elif dbtype == "redshift":
                 port = 5439
-            elif dbtype=="mysql":
+            elif dbtype == "mysql":
                 port = 3306
-            elif dbtype=="sqlite":
+            elif dbtype == "sqlite":
                 port = None
-            elif dbtype=="mssql":
+            elif dbtype == "mssql":
                 port = 1433
             elif profile is not None:
                 pass
@@ -723,7 +748,7 @@ class DB(object):
 
         if not dbtype in ("sqlite", "mssql") and username is None:
             self.load_credentials(profile)
-        elif dbtype=="sqlite" and filename is None:
+        elif dbtype == "sqlite" and filename is None:
             self.load_credentials(profile)
         else:
             self.username = username
@@ -740,40 +765,33 @@ class DB(object):
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
         self._query_templates = queries_templates.get(self.dbtype).queries
 
-        if self.dbtype=="postgres" or self.dbtype=="redshift":
-            if not HAS_PG:
-                raise Exception("Couldn't find psycopg2 library. Please ensure it is installed")
-            self.con = pg.connect(user=self.username, password=self.password,
+        db_driver = self._load_driver()
+
+        if self.dbtype == "postgres" or self.dbtype == "redshift":
+            self.con = db_driver.connect(user=self.username, password=self.password,
                 host=self.hostname, port=self.port, dbname=self.dbname)
             self.cur = self.con.cursor()
-        elif self.dbtype=="sqlite":
-            if not HAS_SQLITE:
-                raise Exception("Couldn't find sqlite library. Please ensure it is installed")
-            self.con = sqlite.connect(self.filename)
+        elif self.dbtype == "sqlite":
+            self.con = db_driver.connect(self.filename)
             self.cur = self.con.cursor()
             self._create_sqlite_metatable()
-        elif self.dbtype=="mysql":
-            if not HAS_MYSQL:
-                raise Exception("Couldn't find MySQLdb library. Please ensure it is installed")
+        elif self.dbtype == "mysql":
             creds = {}
             for arg in ["username", "password", "hostname", "port", "dbname"]:
                 if getattr(self, arg):
                     value = getattr(self, arg)
-                    if arg=="username":
+                    if arg == "username":
                         arg = "user"
-                    elif arg=="password":
+                    elif arg == "password":
                         arg = "passwd"
-                    elif arg=="dbname":
+                    elif arg == "dbname":
                         arg = "db"
-                    elif arg=="hostname":
+                    elif arg == "hostname":
                         arg = "host"
                     creds[arg] = value
-            self.con = MySQLdb.connect(**creds)
+            self.con = db_driver.connect(**creds)
             self.cur = self.con.cursor()
-        elif self.dbtype=="mssql":
-            if not HAS_ODBC:
-                raise Exception("Couldn't find pyodbc library. Please ensure it is installed")
-
+        elif self.dbtype == "mssql":
             base_con = "Driver={0};Server={server};Database={database};".format(
                 "SQL Server",
                 server=self.hostname or "localhost",
@@ -787,7 +805,7 @@ class DB(object):
                 )
             ) or "{}{}".format(base_con, "Trusted_Connection=Yes;"))
 
-            self.con = pyodbc.connect(conn_str)
+            self.con = db_driver.connect(conn_str)
             self.cur = self.con.cursor()
 
         self.tables = TableSet([])
@@ -1095,7 +1113,7 @@ class DB(object):
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
         """
-        if limit==False:
+        if limit == False:
             pass
         else:
             q = self._assign_limit(q, limit)
@@ -1199,7 +1217,7 @@ class DB(object):
         sys.stderr.write("Refreshing schema. Please wait...")
         if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates:
             q = self._query_templates['system']['schema_specified'] % str(self.schemas)
-        elif exclude_system_tables==True:
+        elif exclude_system_tables == True:
             q = self._query_templates['system']['schema_no_system']
         else:
             q = self._query_templates['system']['schema_with_system']
@@ -1388,7 +1406,7 @@ def remove_profile(name, s3=False):
     Removes a profile from your config
     """
     user = os.path.expanduser("~")
-    if s3==True:
+    if s3 == True:
         f = os.path.join(user, ".db.py_s3_" + name)
     else:
         f = os.path.join(user, ".db.py_" + name)
