@@ -1,7 +1,17 @@
 db.py
 =====
 
-`Blog Post <http://blog.yhathq.com/posts/introducing-db-py.html>`__
+-  `What is it <#what-is-it>`__
+-  `Databases Supported <#databases-supported>`__
+-  `Features <#dbpy-lets-you>`__
+-  `Quickstart <#quickstart>`__
+
+   -  `Installation <#installation>`__
+   -  `Demo <#demo>`__
+
+-  `How To <#how-to>`__
+-  `Contributing <#contributing>`__
+-  `TODO <#todo>`__
 
 What is it?
 -----------
@@ -15,6 +25,21 @@ functions.
 data, so if you're already using ``pandas``, ``db.py`` should feel
 pretty natural. It's also fully compatible with the IPython Notebook, so
 not only is ``db.py`` extremely functional, it's also pretty.
+
+`Blog Post <http://blog.yhathq.com/posts/introducing-db-py.html>`__
+
+Databases Supported
+-------------------
+
+-  PostgreSQL
+-  MySQL
+-  SQLite
+-  Redshift
+-  MS SQL Server
+-  Oracle
+
+``db.py`` let's you...
+----------------------
 
 Execute queries
 
@@ -304,7 +329,7 @@ The ``DB()`` object
 -  *filename*: path to sqlite database (i.e.
    ``baseball-archive-2012.sqlite``, ``employees.db``)
 -  *dbtype*: type of database you're connecting to (postgres, mysql,
-   sqlite, redshfit)
+   sqlite, redshift)
 -  *profile*: name of the profile you want to use to connect. using this
    negates the need to specify any other arguments
 -  *exclude\_system\_tables*: whether or not to load schema information
