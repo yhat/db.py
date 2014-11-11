@@ -1,5 +1,4 @@
 # db.py
-## Contents
 - [What is it](./#what-is-it)
 - [Databases Supported](./#databases-supported)
 - [Features](./#dbpy-lets-you)
