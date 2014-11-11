@@ -1,6 +1,15 @@
 # db.py
 [Blog Post](http://blog.yhathq.com/posts/introducing-db-py.html)
 
+### Databases Supported
+
+- PostgreSQL
+- MySQL
+- SQLite
+- Redshift
+- MS SQL Server
+- Oracle
+
 ## What is it?
 `db.py` is an easier way to interact with your databases. It makes it easier to explore tables, columns, views, etc. It puts the emphasis on user interaction, information display, and providing easy to use helper functions.
 
