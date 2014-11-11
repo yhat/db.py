@@ -2,6 +2,7 @@
 =====
 - support for Oracle & MS SQL
 - improved requirements handling
+- basic docs and how to contribute
 
 0.2
 =====
