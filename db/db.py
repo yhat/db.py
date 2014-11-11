@@ -19,6 +19,7 @@ from .queries import mysql as mysql_templates
 from .queries import postgres as postgres_templates
 from .queries import sqlite as sqlite_templates
 from .queries import mssql as mssql_templates
+from .queries import oracle as oracle_templates
 
 
 queries_templates = {
@@ -27,6 +28,7 @@ queries_templates = {
     "redshift": postgres_templates,
     "sqlite": sqlite_templates,
     "mssql": mssql_templates,
+    "oracle": oracle_templates
 }
 
 # attempt to import the relevant database libraries
@@ -36,6 +38,12 @@ try:
     HAS_PG = True
 except ImportError:
     HAS_PG = False
+
+try:
+    import cx_Oracle as ora
+    HAS_ORA = True
+except ImportError:
+    HAS_ORA = False
 
 try:
     import MySQLdb
@@ -674,6 +682,7 @@ class DB(object):
             mysql: 3306
             sqlite: n/a
             mssql: 1433
+            oracle: 1521
     filename: str
         path to sqlite database
     dbname: str
@@ -705,6 +714,8 @@ class DB(object):
     >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
     >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql")
+    >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="oracle")
+
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
@@ -721,10 +732,12 @@ class DB(object):
                 port = None
             elif dbtype=="mssql":
                 port = 1433
+            elif dbtype=="oracle":
+                port = 1521
             elif profile is not None:
                 pass
             else:
-                raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
+                raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, oracle or redshift")
 
         if not dbtype in ("sqlite", "mssql") and username is None:
             self.load_credentials(profile)
@@ -794,6 +807,18 @@ class DB(object):
 
             self.con = pyodbc.connect(conn_str)
             self.cur = self.con.cursor()
+        elif self.dbtype=="oracle":
+            if not HAS_ORA:
+                raise Exception("Couldn't find cx_Oracle library. Please ensure it is installed")
+            connection_string = "{username}/{password}@{hostname}:{port}/{dbname}".format(
+                username=self.username, password=self.password, hostname=self.hostname, port=self.port, dbname=self.dbname)
+            try:
+                self.con = ora.connect(connection_string)
+                self.cur = self.con.cursor()
+            except Exception, e:
+                print e
+                sys.exit(0)
+            #self.cur = self.con.cursor()
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
@@ -991,14 +1016,22 @@ class DB(object):
             if limit:
                 q = q.rstrip().rstrip(";")
                 q = "select * from (%s) q limit %d" % (q, limit)
-            return q
+            #return q
+        # oracle
+        elif self.dbtype == "oracle":
+            if limit:
+                q = q.rstrip().rstrip(";")
+                q = "select * from (%s) q where rownum <= %d" % (q, limit)
         # mssql
-        else:
+        elif self.dbtype == "mssql":
             if limit:
                 q = "select top %d * from (%s) q" % (limit, q)
-                return q
+                #return q
+        else:
+            pass
+        return q
 
-    def query(self, q, limit=None):
+    def query(self, q, limit=False):
         """
         Query your database with a raw string.
 
