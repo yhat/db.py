@@ -8,7 +8,6 @@ except:
 import uuid
 import json
 import base64
-import math
 import re
 import os
 import sys
@@ -40,9 +39,15 @@ except ImportError:
 
 try:
     import MySQLdb
+    mysql_connect = MySQLdb.connect
     HAS_MYSQL = True
 except ImportError:
-    HAS_MYSQL = False
+    try:
+        import pymysql
+        mysql_connect = pymysql.connect
+        HAS_MYSQL = True
+    except ImportError:
+        HAS_MYSQL = False
 
 try:
     import sqlite3 as sqlite
@@ -754,7 +759,7 @@ class DB(object):
             self._create_sqlite_metatable()
         elif self.dbtype=="mysql":
             if not HAS_MYSQL:
-                raise Exception("Couldn't find MySQLdb library. Please ensure it is installed")
+                raise Exception("Couldn't find MySQLdb or pymysql library. Please ensure it is installed")
             creds = {}
             for arg in ["username", "password", "hostname", "port", "dbname"]:
                 if getattr(self, arg):
@@ -768,7 +773,7 @@ class DB(object):
                     elif arg=="hostname":
                         arg = "host"
                     creds[arg] = value
-            self.con = MySQLdb.connect(**creds)
+            self.con = mysql_connect(**creds)
             self.cur = self.con.cursor()
         elif self.dbtype=="mssql":
             if not HAS_ODBC:
