@@ -8,12 +8,16 @@ except:
 import uuid
 import json
 import base64
-import re
 import os
 import sys
 
 import pandas as pd
 from prettytable import PrettyTable
+
+from .drivers import MySQLDriver
+from .drivers import PostgreSQLDriver
+from .drivers import SQLite3Driver
+from .drivers import ODBCDriver
 
 from .queries import mysql as mysql_templates
 from .queries import postgres as postgres_templates
@@ -28,38 +32,6 @@ queries_templates = {
     "sqlite": sqlite_templates,
     "mssql": mssql_templates,
 }
-
-# attempt to import the relevant database libraries
-# TODO: maybe add warnings?
-try:
-    import psycopg2 as pg
-    HAS_PG = True
-except ImportError:
-    HAS_PG = False
-
-try:
-    import MySQLdb
-    mysql_connect = MySQLdb.connect
-    HAS_MYSQL = True
-except ImportError:
-    try:
-        import pymysql
-        mysql_connect = pymysql.connect
-        HAS_MYSQL = True
-    except ImportError:
-        HAS_MYSQL = False
-
-try:
-    import sqlite3 as sqlite
-    HAS_SQLITE = True
-except ImportError:
-    HAS_SQLITE = False
-
-try:
-    import pyodbc
-    HAS_ODBC = True
-except ImportError:
-    HAS_ODBC = False
 
 
 class Column(object):
@@ -239,6 +211,7 @@ class Column(object):
         """
         q = self._query_templates['column']['sample'] % (self.name, self.table, n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
+
 
 class Table(object):
     """
@@ -678,6 +651,8 @@ class DB(object):
         path to sqlite database
     dbname: str
         Name of the database
+    dbdriver: str
+        Name of the database driver
     schemas: list
         List of schemas to include. Defaults to all.
     profile: str
@@ -707,7 +682,7 @@ class DB(object):
     >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql")
     """
     def __init__(self, username=None, password=None, hostname="localhost",
-            port=None, filename=None, dbname=None, dbtype=None, schemas=None,
+            port=None, filename=None, dbname=None, dbtype=None, dbdriver=None, schemas=None,
             profile="default", exclude_system_tables=True, limit=1000):
 
         if port is None:
@@ -738,6 +713,7 @@ class DB(object):
             self.filename = filename
             self.dbname = dbname
             self.dbtype = dbtype
+            self.dbdriver = dbdriver
             self.schemas = schemas
             self.limit = limit
 
@@ -746,68 +722,42 @@ class DB(object):
         self._query_templates = queries_templates.get(self.dbtype).queries
 
         if self.dbtype=="postgres" or self.dbtype=="redshift":
-            if not HAS_PG:
-                raise Exception("Couldn't find psycopg2 library. Please ensure it is installed")
-            self.con = pg.connect(user=self.username, password=self.password,
-                host=self.hostname, port=self.port, dbname=self.dbname)
-            self.cur = self.con.cursor()
+            self.driver = PostgreSQLDriver(host=self.hostname, port=self.port,
+                                           user=self.username, passwd=self.password,
+                                           db=self.dbname)
         elif self.dbtype=="sqlite":
-            if not HAS_SQLITE:
-                raise Exception("Couldn't find sqlite library. Please ensure it is installed")
-            self.con = sqlite.connect(self.filename)
-            self.cur = self.con.cursor()
-            self._create_sqlite_metatable()
+            self.driver = SQLite3Driver(filename=self.filename)
         elif self.dbtype=="mysql":
-            if not HAS_MYSQL:
-                raise Exception("Couldn't find MySQLdb or pymysql library. Please ensure it is installed")
-            creds = {}
-            for arg in ["username", "password", "hostname", "port", "dbname"]:
-                if getattr(self, arg):
-                    value = getattr(self, arg)
-                    if arg=="username":
-                        arg = "user"
-                    elif arg=="password":
-                        arg = "passwd"
-                    elif arg=="dbname":
-                        arg = "db"
-                    elif arg=="hostname":
-                        arg = "host"
-                    creds[arg] = value
-            self.con = mysql_connect(**creds)
-            self.cur = self.con.cursor()
+            driver_name = dbdriver
+            if not driver_name:
+                driver_name = "mysqldb"
+            self.driver = MySQLDriver(host=self.hostname, port=self.port,
+                                      user=self.username, passwd=self.password,
+                                      db=self.dbname, driver=driver_name)
         elif self.dbtype=="mssql":
-            if not HAS_ODBC:
-                raise Exception("Couldn't find pyodbc library. Please ensure it is installed")
-
-            base_con = "Driver={0};Server={server};Database={database};".format(
-                "SQL Server",
-                server=self.hostname or "localhost",
-                database=self.dbname or ''
-            )
-            conn_str = ((self.username and self.password) and "{}{}".format(
-                base_con,
-                "User Id={username};Password={password};".format(
-                    username=self.username,
-                    password=self.password
-                )
-            ) or "{}{}".format(base_con, "Trusted_Connection=Yes;"))
-
-            self.con = pyodbc.connect(conn_str)
-            self.cur = self.con.cursor()
+            self.driver = ODBCDriver(server=self.hostname, database=self.dbname,
+                                     username=self.username, password=self.password)
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
 
     def __str__(self):
+        dbtype = self.dbtype
+        if self.dbdriver:
+            dbtype = "{dbtype}+{dbdriver}".format(dbtype=self.dbtype, dbdriver=self.dbdriver)
         return "DB[{dbtype}][{hostname}]:{port} > {user}@{dbname}".format(
-            dbtype=self.dbtype, hostname=self.hostname, port=self.port, user=self.username, dbname=self.dbname)
+            dbtype=dbtype, hostname=self.hostname, port=self.port, user=self.username, dbname=self.dbname)
 
     def __repr__(self):
         return self.__str__()
 
-    def __delete__(self):
-        del self.cur
-        del self.con
+    @property
+    def con(self):
+        return self.driver.con
+
+    @property
+    def cur(self):
+        return self.driver.cursor
 
     def load_credentials(self, profile="default"):
         """
@@ -834,6 +784,7 @@ class DB(object):
             self.filename = creds.get('filename')
             self.dbname = creds.get('dbname')
             self.dbtype = creds.get('dbtype')
+            self.dbdriver = creds.get('dbdriver')
             self.schemas = creds.get('schemas')
             self.limit = creds.get('limit')
         else:
@@ -871,6 +822,7 @@ class DB(object):
             "filename": db_filename,
             "dbname": self.dbname,
             "dbtype": self.dbtype,
+            "dbdriver": self.dbdriver,
             "schemas": self.schemas,
             "limit": self.limit,
         }
@@ -1158,42 +1110,6 @@ class DB(object):
         9                               Evil Walks       0.99
         """
         return self.query(open(filename).read(), limit)
-
-    def _create_sqlite_metatable(self):
-        """
-        SQLite doesn't come with any metatables (at least ones that fit into our
-        framework), so we're going to create them.
-        """
-        sys.stderr.write("Indexing schema. This will take a second...")
-        rows_to_insert = []
-        tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
-        for table in tables:
-            for row in self.cur.execute("pragma table_info(%s)" % table):
-                rows_to_insert.append((table, row[1], row[2]))
-        # find for table and column names
-        self.cur.execute("drop table if exists tmp_dbpy_schema;")
-        self.cur.execute("create temp table tmp_dbpy_schema(table_name varchar, column_name varchar, data_type varchar);")
-        for row in rows_to_insert:
-            self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
-        self.cur.execute("SELECT name, sql  FROM sqlite_master where sql like '%REFERENCES%';")
-
-        # find for foreign keys
-        self.cur.execute("drop table if exists tmp_dbpy_foreign_keys;")
-        self.cur.execute("create temp table tmp_dbpy_foreign_keys(table_name varchar, column_name varchar, foreign_table varchar, foreign_column varchar);")
-        foreign_keys = []
-        self.cur.execute("SELECT name, sql  FROM sqlite_master ;")
-        for (table_name, sql) in self.cur:
-            rgx = "FOREIGN KEY \(\[(.*)\]\) REFERENCES \[(.*)\] \(\[(.*)\]\)"
-            if sql is None:
-                continue
-            for (column_name, foreign_table, foreign_key) in re.findall(rgx, sql):
-                foreign_keys.append((table_name, column_name, foreign_table, foreign_key))
-        for row in foreign_keys:
-            sql_insert = "insert into tmp_dbpy_foreign_keys(table_name, column_name, foreign_table, foreign_column) values('%s', '%s', '%s', '%s');"
-            self.cur.execute(sql_insert % row)
-
-        self.con.commit()
-        sys.stderr.write("finished!\n")
 
     def refresh_schema(self, exclude_system_tables=True):
         """
