@@ -72,7 +72,7 @@ class Column(object):
         self._con = con
         self._query_templates = query_templates
         self.table = table
-        self._name = name
+        self.name = name
         self.type = dtype
 
         self.foreign_keys = []
@@ -81,28 +81,28 @@ class Column(object):
     def __repr__(self):
         tbl = PrettyTable(["Table", "Name", "Type", "Foreign Keys",
                            "Reference Keys"])
-        tbl.add_row([self.table, self._name, self.type, self._str_foreign_keys(),
+        tbl.add_row([self.table, self.name, self.type, self._str_foreign_keys(),
                      self._str_ref_keys()])
         return str(tbl)
 
     def __str__(self):
-        return "Column(%s)<%d>" % (self._name, self.__hash__())
+        return "Column(%s)<%d>" % (self.name, self.__hash__())
 
     def _repr_html_(self):
         tbl = PrettyTable(["Table", "Name", "Type"])
-        tbl.add_row([self.table, self._name, self.type])
+        tbl.add_row([self.table, self.name, self.type])
         return tbl.get_html_string()
 
     def _str_foreign_keys(self):
         keys = []
         for col in self.foreign_keys:
-            keys.append("%s.%s" % (col.table, col._name))
+            keys.append("%s.%s" % (col.table, col.name))
         return ", ".join(keys)
 
     def _str_ref_keys(self):
         keys = []
         for col in self.ref_keys:
-            keys.append("%s.%s" % (col.table, col._name))
+            keys.append("%s.%s" % (col.table, col.name))
         return ", ".join(keys)
 
     def head(self, n=6):
@@ -136,8 +136,8 @@ class Column(object):
         1              Stuttgart
         Name: City, dtype: object
         """
-        q = self._query_templates['column']['head'] % (self._name, self.table, n)
-        return pd.io.sql.read_sql(q, self._con)[self._name]
+        q = self._query_templates['column']['head'] % (self.name, self.table, n)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def all(self):
         """
@@ -170,8 +170,8 @@ class Column(object):
         >>> len(df)
             59
         """
-        q = self._query_templates['column']['all'] % (self._name, self.table)
-        return pd.io.sql.read_sql(q, self._con)[self._name]
+        q = self._query_templates['column']['all'] % (self.name, self.table)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def unique(self):
         """
@@ -201,8 +201,8 @@ class Column(object):
         ...
         >>> len(db.tables.Customer.LastName.unique())
         """
-        q = self._query_templates['column']['unique'] % (self._name, self.table)
-        return pd.io.sql.read_sql(q, self._con)[self._name]
+        q = self._query_templates['column']['unique'] % (self.name, self.table)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def sample(self, n=10):
         """
@@ -224,7 +224,7 @@ class Column(object):
         --------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.tables.Artist._Name.sample(10)
+        >>> db.tables.Artist.Name.sample(10)
         0                     Julian Bream
         1                         Godsmack
         2                             Lost
@@ -237,8 +237,8 @@ class Column(object):
         9    Santana Feat. The Project G&B
         Name: Name, dtype: object
         """
-        q = self._query_templates['column']['sample'] % (self._name, self.table, n)
-        return pd.io.sql.read_sql(q, self._con)[self._name]
+        q = self._query_templates['column']['sample'] % (self.name, self.table, n)
+        return pd.io.sql.read_sql(q, self._con)[self.name]
 
 class Table(object):
     """
@@ -246,7 +246,7 @@ class Table(object):
     about the columns, schema, etc. of a table and you can also use it to execute queries.
     """
     def __init__(self, con, query_templates, name, cols):
-        self._name = name
+        self.name = name
         self._con = con
         self._cur = con.cursor()
         self._query_templates = query_templates
@@ -255,12 +255,12 @@ class Table(object):
 
         self._columns = cols
         for col in cols:
-            attr = col._name
+            attr = col.name
             if attr in ("name", "con"):
-                attr = "_" + col._name
+                attr = "_" + col.name
             setattr(self, attr, col)
 
-        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'] % (self._name))
+        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'] % (self.name))
         for (column_name, foreign_table, foreign_column) in self._cur:
             col = getattr(self, column_name)
             foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type)
@@ -270,7 +270,7 @@ class Table(object):
 
         self.foreign_keys = ColumnSet(self.foreign_keys)
 
-        self._cur.execute(self._query_templates['system']['ref_keys_for_table'] % (self._name))
+        self._cur.execute(self._query_templates['system']['ref_keys_for_table'] % (self.name))
         for (column_name, ref_table, ref_column) in self._cur:
             col = getattr(self, column_name)
             ref_key = Column(con, queries_templates, ref_table, ref_column, col.type)
@@ -287,18 +287,18 @@ class Table(object):
         tbl.align["Foreign Keys"] = "l"
         tbl.align["Reference Keys"] = "l"
         for col in self._columns:
-            tbl.add_row([col._name, col.type, col._str_foreign_keys(), col._str_ref_keys()])
+            tbl.add_row([col.name, col.type, col._str_foreign_keys(), col._str_ref_keys()])
         return tbl
 
     def __repr__(self):
         tbl = str(self._tablify())
         r = tbl.split('\n')[0]
         brk = "+" + "-"*(len(r)-2) + "+"
-        title = "|" + self._name.center(len(r)-2) + "|"
+        title = "|" + self.name.center(len(r)-2) + "|"
         return brk + "\n" + title + "\n" + tbl
 
     def __str__(self):
-        return "Table(%s)<%d>" % (self._name, self.__hash__())
+        return "Table(%s)<%d>" % (self.name, self.__hash__())
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
@@ -340,7 +340,7 @@ class Table(object):
         # select name & composer from the Track table
         >>> df = db.tables.Track.select("Name", "Composer")
         """
-        q = self._query_templates['table']['select'] % (", ".join(args), self._name)
+        q = self._query_templates['table']['select'] % (", ".join(args), self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def head(self, n=6):
@@ -396,7 +396,7 @@ class Table(object):
            UnitPrice
         0       0.99
         """
-        q = self._query_templates['table']['head'] % (self._name, n)
+        q = self._query_templates['table']['head'] % (self.name, n)
         return pd.io.sql.read_sql(q, self._con)
 
     def all(self):
@@ -416,7 +416,7 @@ class Table(object):
         >>> df = db.tables.Track.all()
         """
 
-        q = self._query_templates['table']['all'] % (self._name)
+        q = self._query_templates['table']['all'] % (self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def unique(self, *args):
@@ -473,7 +473,7 @@ class Table(object):
             columns = "*"
         else:
             columns = ", ".join(args)
-        q = self._query_templates['table']['unique'] % (columns, self._name)
+        q = self._query_templates['table']['unique'] % (columns, self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def sample(self, n=10):
@@ -533,7 +533,7 @@ class Table(object):
         8        283951   9258717       0.99
         9        404453  13186975       0.99
         """
-        q = self._query_templates['table']['sample'] % (self._name, n)
+        q = self._query_templates['table']['sample'] % (self.name, n)
         return pd.io.sql.read_sql(q, self._con)
 
 
@@ -543,7 +543,7 @@ class TableSet(object):
     """
     def __init__(self, tables):
         for tbl in tables:
-            setattr(self, tbl._name, tbl)
+            setattr(self, tbl.name, tbl)
         self.tables = tables
 
     def __getitem__(self, i):
@@ -554,13 +554,13 @@ class TableSet(object):
         tbl.align["Table"] = "l"
         tbl.align["Columns"] = "l"
         for table in self.tables:
-            column_names = [col._name for col in table._columns]
+            column_names = [col.name for col in table._columns]
             column_names = ", ".join(column_names)
             pretty_column_names = ""
             for i in range(0, len(column_names), 80):
                 pretty_column_names += column_names[i:(i+80)] + "\n"
             pretty_column_names = pretty_column_names.strip()
-            tbl.add_row([table._name, pretty_column_names])
+            tbl.add_row([table.name, pretty_column_names])
         return tbl
 
     def __repr__(self):
@@ -587,7 +587,7 @@ class ColumnSet(object):
         tbl.align["Column"] = "l"
         tbl.align["Type"] = "l"
         for col in self.columns:
-            tbl.add_row([col.table, col._name, col.type])
+            tbl.add_row([col.table, col.name, col.type])
         return tbl
 
     def __repr__(self):
@@ -908,7 +908,7 @@ class DB(object):
         """
         tables = []
         for table in self.tables:
-            if glob.fnmatch.fnmatch(table._name, search):
+            if glob.fnmatch.fnmatch(table.name, search):
                 tables.append(table)
         return TableSet(tables)
 
@@ -1067,7 +1067,7 @@ class DB(object):
         >>> q = '''
         SELECT
           a.Title
-          , t._Name
+          , t.Name
           , t.UnitPrice
         FROM
           Album a
@@ -1121,7 +1121,7 @@ class DB(object):
         >>> q = '''
         SELECT
           a.Title
-          , t._Name
+          , t.Name
           , t.UnitPrice
         FROM
           Album a
