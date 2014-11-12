@@ -1,11 +1,31 @@
 # db.py
-[Blog Post](http://blog.yhathq.com/posts/introducing-db-py.html)
+- [What is it](#what-is-it)
+- [Databases Supported](#databases-supported)
+- [Features](#dbpy-lets-you)
+- [Quickstart](#quickstart)
+       - [Installation](#installation)
+       - [Demo](#demo)
+- [How To](#how-to)
+- [Contributing](#contributing)
+- [TODO](#todo)
 
 ## What is it?
 `db.py` is an easier way to interact with your databases. It makes it easier to explore tables, columns, views, etc. It puts the emphasis on user interaction, information display, and providing easy to use helper functions.
 
 `db.py` uses [`pandas`](http://pandas.pydata.org/) to manage data, so if you're already using `pandas`, `db.py` should feel pretty natural. It's also fully compatible with the IPython Notebook, so not only is `db.py` extremely functional, it's also pretty.
 
+[Blog Post](http://blog.yhathq.com/posts/introducing-db-py.html)
+
+## Databases Supported
+
+- PostgreSQL
+- MySQL
+- SQLite
+- Redshift
+- MS SQL Server
+- Oracle
+
+## `db.py` let's you...
 Execute queries
 ```python
 >>> db.query_from_file("myscript.sql")
