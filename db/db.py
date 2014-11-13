@@ -86,7 +86,7 @@ class Column(object):
         return str(tbl)
 
     def __str__(self):
-        return "Column(%s)<%d>" % (self.name, self.__hash__())
+        return "Column(%s)<%s>" % (self.name, self.__hash__())
 
     def _repr_html_(self):
         tbl = PrettyTable(["Table", "Name", "Type"])
@@ -136,7 +136,7 @@ class Column(object):
         1              Stuttgart
         Name: City, dtype: object
         """
-        q = self._query_templates['column']['head'] % (self.name, self.table, n)
+        q = self._query_templates['column']['head'] % (n, self.name, self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def all(self):
@@ -170,7 +170,7 @@ class Column(object):
         >>> len(df)
             59
         """
-        q = self._query_templates['column']['all'] % (self.name, self.table)
+        q = self._query_templates['column']['all'] % (n, self.name, self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def unique(self):
@@ -201,7 +201,7 @@ class Column(object):
         ...
         >>> len(db.tables.Customer.LastName.unique())
         """
-        q = self._query_templates['column']['unique'] % (self.name, self.table)
+        q = self._query_templates['column']['unique'] % (n, self.name, self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def sample(self, n=10):
@@ -237,7 +237,7 @@ class Column(object):
         9    Santana Feat. The Project G&B
         Name: Name, dtype: object
         """
-        q = self._query_templates['column']['sample'] % (self.name, self.table, n)
+        q = self._query_templates['column']['sample'] % (n, self.name, self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
 class Table(object):
@@ -258,7 +258,10 @@ class Table(object):
             attr = col.name
             if attr in ("name", "con"):
                 attr = "_" + col.name
-            setattr(self, attr, col)
+            try:
+                setattr(self, attr, col)
+            except UnicodeEncodeError:
+                pass
 
         self._cur.execute(self._query_templates['system']['foreign_keys_for_table'] % (self.name))
         for (column_name, foreign_table, foreign_column) in self._cur:
@@ -298,7 +301,7 @@ class Table(object):
         return brk + "\n" + title + "\n" + tbl
 
     def __str__(self):
-        return "Table(%s)<%d>" % (self.name, self.__hash__())
+        return "Table(%s)<%s>" % (self.name, self.__hash__())
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
@@ -396,7 +399,7 @@ class Table(object):
            UnitPrice
         0       0.99
         """
-        q = self._query_templates['table']['head'] % (self.name, n)
+        q = self._query_templates['table']['head'] % (n, self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def all(self):
@@ -533,7 +536,7 @@ class Table(object):
         8        283951   9258717       0.99
         9        404453  13186975       0.99
         """
-        q = self._query_templates['table']['sample'] % (self.name, n)
+        q = self._query_templates['table']['sample'] % (n, self.name)
         return pd.io.sql.read_sql(q, self._con)
 
 
@@ -706,9 +709,10 @@ class DB(object):
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
     >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql")
     """
-    def __init__(self, username=None, password=None, hostname="localhost",
-            port=None, filename=None, dbname=None, dbtype=None, schemas=None,
-            profile="default", exclude_system_tables=True, limit=1000):
+    def __init__(self, driver=None, dsn=None, username=None, password=None, 
+            hostname="localhost", port=None, filename=None, dbname=None,
+            dbtype=None, schemas=None, profile="default", exclude_system_tables=True,
+            limit=1000):
 
         if port is None:
             if dbtype=="postgres":
@@ -731,6 +735,8 @@ class DB(object):
         elif dbtype=="sqlite" and filename is None:
             self.load_credentials(profile)
         else:
+            self.driver = driver
+            self.dsn = dsn
             self.username = username
             self.password = password
             self.hostname = hostname
@@ -779,8 +785,9 @@ class DB(object):
             if not HAS_ODBC:
                 raise Exception("Couldn't find pyodbc library. Please ensure it is installed")
 
-            base_con = "Driver={0};Server={server};Database={database};".format(
-                "SQL Server",
+            base_con = "Driver={driver};DSN={dsn};Server={server};Database={database};".format(
+                driver=self.driver or "SQL Server",
+                dsn=self.dsn or '',
                 server=self.hostname or "localhost",
                 database=self.dbname or ''
             )
@@ -827,6 +834,8 @@ class DB(object):
             raw_creds = open(f, 'rb').read()
             raw_creds = base64.decodestring(raw_creds).decode('utf-8')
             creds = json.loads(raw_creds)
+            self.driver = creds.get('driver')
+            self.dsn = creds.get('dsn')
             self.username = creds.get('username')
             self.password = creds.get('password')
             self.hostname = creds.get('hostname')
@@ -864,6 +873,8 @@ class DB(object):
         user = os.path.expanduser("~")
         dotfile = os.path.join(user, ".db.py_" + profile)
         creds = {
+            "driver": self.driver,
+            "dsn": self.dsn,
             "username": self.username,
             "password": self.password,
             "hostname": self.hostname,
@@ -990,12 +1001,12 @@ class DB(object):
         if self.dbtype in ["postgres", "redshift", "sqlite", "mysql"]:
             if limit:
                 q = q.rstrip().rstrip(";")
-                q = "select * from (%s) q limit %d" % (q, limit)
+                q = "select * from (%s) q limit %s" % (q, limit)
             return q
         # mssql
         else:
             if limit:
-                q = "select top %d * from (%s) q" % (limit, q)
+                q = "select top %s * from (%s) q" % (limit, q)
                 return q
 
     def query(self, q, limit=None):
@@ -1201,7 +1212,7 @@ class DB(object):
         columns.
         """
 
-        sys.stderr.write("Refreshing schema. Please wait...")
+        # sys.stderr.write("Refreshing schema. Please wait...")
         if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates:
             q = self._query_templates['system']['schema_specified'] % str(self.schemas)
         elif exclude_system_tables==True:
@@ -1219,7 +1230,7 @@ class DB(object):
             tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type))
 
         self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
-        sys.stderr.write("done!\n")
+        # sys.stderr.write("done!\n")
 
     def _try_command(self, cmd):
         try:
@@ -1297,7 +1308,7 @@ class DB(object):
             conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
             chunk = df[i:(i+chunk_size)]
             k = Key(bucket)
-            k.key = 'data-%d-%d.csv.gz' % (i, i + chunk_size)
+            k.key = 'data-%s-%s.csv.gz' % (i, i + chunk_size)
             k.set_metadata('parent', 'db.py')
             out = StringIO()
             with gzip.GzipFile(fileobj=out, mode="w") as f:
