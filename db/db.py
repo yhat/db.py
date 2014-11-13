@@ -706,7 +706,7 @@ class DB(object):
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
     >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql")
     """
-    def __init__(self, driver=None, bdsn=None, username=None, password=None, 
+    def __init__(self, driver=None, dsn=None, username=None, password=None, 
             hostname="localhost", port=None, filename=None, dbname=None,
             dbtype=None, schemas=None, profile="default", exclude_system_tables=True,
             limit=1000):
@@ -733,7 +733,7 @@ class DB(object):
             self.load_credentials(profile)
         else:
             self.driver = driver
-            self.bdsn = bdsn
+            self.dsn = dsn
             self.username = username
             self.password = password
             self.hostname = hostname
@@ -782,9 +782,9 @@ class DB(object):
             if not HAS_ODBC:
                 raise Exception("Couldn't find pyodbc library. Please ensure it is installed")
 
-            base_con = "Driver={driver};BDSN={bdsn};Server={server};Database={database};".format(
+            base_con = "Driver={driver};DSN={dsn};Server={server};Database={database};".format(
                 driver=self.driver or "SQL Server",
-                bdsn=self.bdsn or '',
+                dsn=self.dsn or '',
                 server=self.hostname or "localhost",
                 database=self.dbname or ''
             )
@@ -869,7 +869,7 @@ class DB(object):
         dotfile = os.path.join(user, ".db.py_" + profile)
         creds = {
             "driver": self.driver,
-            "bdsn": self.bdsn,
+            "dsn": self.dsn,
             "username": self.username,
             "password": self.password,
             "hostname": self.hostname,
