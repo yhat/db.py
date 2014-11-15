@@ -1014,7 +1014,7 @@ class DB(object):
         else:
             if limit:
                 q = "select top %d * from (%s) q" % (limit, q)
-                return q
+            return q
 
     def query(self, q, limit=None):
         """
