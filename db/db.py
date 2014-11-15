@@ -61,6 +61,12 @@ try:
 except ImportError:
     HAS_ODBC = False
 
+try:
+    import pymssql
+    HAS_PYMSSQL = True
+except ImportError:
+    HAS_PYMSSQL = False
+
 
 class Column(object):
     """
@@ -776,24 +782,36 @@ class DB(object):
             self.con = mysql_connect(**creds)
             self.cur = self.con.cursor()
         elif self.dbtype=="mssql":
-            if not HAS_ODBC:
-                raise Exception("Couldn't find pyodbc library. Please ensure it is installed")
+            if not HAS_ODBC and not HAS_PYMSSQL:
+                raise Exception("Couldn't find pyodbc or pymssql libraries. Please ensure one of them is installed")
 
-            base_con = "Driver={0};Server={server};Database={database};".format(
-                "SQL Server",
-                server=self.hostname or "localhost",
-                database=self.dbname or ''
-            )
-            conn_str = ((self.username and self.password) and "{}{}".format(
-                base_con,
-                "User Id={username};Password={password};".format(
-                    username=self.username,
-                    password=self.password
+            if HAS_ODBC:
+                base_con = "Driver={0};Server={server};Database={database};".format(
+                    "SQL Server",
+                    server=self.hostname or "localhost",
+                    database=self.dbname or ''
                 )
-            ) or "{}{}".format(base_con, "Trusted_Connection=Yes;"))
+                conn_str = ((self.username and self.password) and "{}{}".format(
+                    base_con,
+                    "User Id={username};Password={password};".format(
+                        username=self.username,
+                        password=self.password
+                    )
+                ) or "{}{}".format(base_con, "Trusted_Connection=Yes;"))
 
-            self.con = pyodbc.connect(conn_str)
-            self.cur = self.con.cursor()
+                self.con = pyodbc.connect(conn_str)
+                self.cur = self.con.cursor()
+            elif HAS_PYMSSQL:
+                if hasattr(self, 'port'):
+                    hostname = '{0}:{1}'.format(self.hostname, self.port)
+                else:
+                    hostname = self.hostname
+
+                self.con = pymssql.connect(host=hostname,
+                                           user=self.username,
+                                           password=self.password,
+                                           database=self.dbname)
+                self.cur = self.con.cursor()
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
