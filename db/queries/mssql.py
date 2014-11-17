@@ -42,13 +42,16 @@ queries = {
                 """,
         "foreign_keys_for_table": """
             SELECT
-                object_name(constraint_object_id) AS foreign_key,
+                parent_col.name AS foreign_key,
                 object_name(referenced_object_id) AS referenced_table,
                 col.name AS referenced_column
             FROM sys.foreign_key_columns
             INNER JOIN sys.columns col
                 ON col.column_id = referenced_column_id
                     AND col.object_id = referenced_object_id
+            INNER JOIN sys.columns parent_col
+                ON parent_col.column_id = parent_column_id
+                   AND parent_col.object_id = parent_object_id
             WHERE parent_object_id = object_id('%s');
         """,
         "foreign_keys_for_column": """
@@ -65,16 +68,18 @@ queries = {
         """,
         "ref_keys_for_table": """
             SELECT
-                dc.Name AS constraint_column,
-                t.Name AS referenced_table,
-                c.Name AS referenced_column
-            FROM sys.tables t
-            INNER JOIN sys.default_constraints dc
-                ON t.object_id = dc.parent_object_id
-            INNER JOIN sys.columns c
-                ON dc.parent_object_id = c.object_id
-                    AND c.column_id = dc.parent_column_id
-            WHERE t.name='%s';
+                ref_col.name,
+                object_name(parent_object_id),
+                col.name as column_name
+            FROM sys.foreign_key_columns
+            INNER JOIN sys.columns col
+               ON col.column_id = parent_column_id
+                   AND col.object_id = parent_object_id
+            INNER JOIN sys.columns ref_col
+                ON ref_col.column_id = referenced_column_id
+                   AND ref_col.object_id = referenced_object_id
+            WHERE referenced_object_id = object_id('%s');
         """
     }
 }
+
