@@ -1,16 +1,16 @@
 queries = {
     "column": {
-        "head": "select %s from %s limit %d;",
-        "all": "select %s from %s;",
-        "unique": "select distinct %s from %s;",
-        "sample": "select %s from %s order by rand() limit %d;"
+        "head": "select {column} from {table} limit {n};",
+        "all": "select {column} from {table};",
+        "unique": "select distinct {column} from {table};",
+        "sample": "select {column} from {table} order by rand() limit {n};"
     },
     "table": {
-        "select": "select %s from %s;",
-        "head": "select * from %s limit %d;",
-        "all": "select * from %s;",
-        "unique": "select distinct %s from %s;",
-        "sample": "select * from %s order by rand() limit %d;"
+        "select": "select {columns} from {table};",
+        "head": "select * from {table} limit {n};",
+        "all": "select * from {table};",
+        "unique": "select distinct {columns} from {table};",
+        "sample": "select * from {table} order by rand() limit {n};"
     },
     "system": {
         "schema_no_system": """
@@ -38,7 +38,7 @@ queries = {
                     , udt_name
                 from
                     information_schema.columns
-                where table_schema in (%s);
+                where table_schema in ({table});
                 """,
         "foreign_keys_for_table": """
         select
@@ -48,7 +48,7 @@ queries = {
         from
             information_schema.key_column_usage
         where
-            table_name = '%s'
+            table_name = '{table}'
             and referenced_column_name IS NOT NULL;
         """,
         "foreign_keys_for_column": """
@@ -59,8 +59,8 @@ queries = {
         from
             information_schema.key_column_usage
         where
-            table_name = '%s'
-            and column_name = '%s'
+            table_name = '{table}'
+            and column_name = '{column}'
             and referenced_column_name IS NOT NULL;
         """,
         "ref_keys_for_table": """
@@ -71,7 +71,7 @@ queries = {
             from
                 information_schema.key_column_usage
             where
-                referenced_table_name = '%s'
+                referenced_table_name = '{table}'
                 and referenced_column_name IS NOT NULL;
         """
     }

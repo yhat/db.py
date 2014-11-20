@@ -93,7 +93,7 @@ class Column(object):
         return str(tbl)
 
     def __str__(self):
-        return "Column(%s)<%d>" % (self.name, self.__hash__())
+        return "Column({0})<{1}>".format(self.name, self.__hash__())
 
     def _repr_html_(self):
         tbl = PrettyTable(["Table", "Name", "Type"])
@@ -147,7 +147,7 @@ class Column(object):
         1              Stuttgart
         Name: City, dtype: object
         """
-        q = self._query_templates['column']['head'] % (self.name, self.table, n)
+        q = self._query_templates['column']['head'].format(column=self.name, table=self.table, n=n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def all(self):
@@ -181,7 +181,7 @@ class Column(object):
         >>> len(df)
             59
         """
-        q = self._query_templates['column']['all'] % (self.name, self.table)
+        q = self._query_templates['column']['all'].format(column=self.name, table=self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def unique(self):
@@ -212,7 +212,7 @@ class Column(object):
         ...
         >>> len(db.tables.Customer.LastName.unique())
         """
-        q = self._query_templates['column']['unique'] % (self.name, self.table)
+        q = self._query_templates['column']['unique'].format(column=self.name, table=self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def sample(self, n=10):
@@ -248,7 +248,7 @@ class Column(object):
         9    Santana Feat. The Project G&B
         Name: Name, dtype: object
         """
-        q = self._query_templates['column']['sample'] % (self.name, self.table, n)
+        q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
 class Table(object):
@@ -272,7 +272,7 @@ class Table(object):
                 attr = "_" + col.name
             setattr(self, attr, col)
 
-        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'] % (self.name))
+        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name))
         for (column_name, foreign_table, foreign_column) in self._cur:
             col = getattr(self, column_name)
             foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type, self.keys_per_column)
@@ -282,7 +282,7 @@ class Table(object):
 
         self.foreign_keys = ColumnSet(self.foreign_keys)
 
-        self._cur.execute(self._query_templates['system']['ref_keys_for_table'] % (self.name))
+        self._cur.execute(self._query_templates['system']['ref_keys_for_table'].format(table=self.name))
         for (column_name, ref_table, ref_column) in self._cur:
             col = getattr(self, column_name)
             ref_key = Column(con, queries_templates, ref_table, ref_column, col.type, self.keys_per_column)
@@ -310,7 +310,7 @@ class Table(object):
         return brk + "\n" + title + "\n" + tbl
 
     def __str__(self):
-        return "Table(%s)<%d>" % (self.name, self.__hash__())
+        return "Table({0})<{1}>".format(self.name, self.__hash__())
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
@@ -352,7 +352,7 @@ class Table(object):
         # select name & composer from the Track table
         >>> df = db.tables.Track.select("Name", "Composer")
         """
-        q = self._query_templates['table']['select'] % (", ".join(args), self.name)
+        q = self._query_templates['table']['select'].format(columns=", ".join(args), table=self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def head(self, n=6):
@@ -408,7 +408,7 @@ class Table(object):
            UnitPrice
         0       0.99
         """
-        q = self._query_templates['table']['head'] % (self.name, n)
+        q = self._query_templates['table']['head'].format(table=self.name, n=n)
         return pd.io.sql.read_sql(q, self._con)
 
     def all(self):
@@ -428,7 +428,7 @@ class Table(object):
         >>> df = db.tables.Track.all()
         """
 
-        q = self._query_templates['table']['all'] % (self.name)
+        q = self._query_templates['table']['all'].format(table=self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def unique(self, *args):
@@ -485,7 +485,7 @@ class Table(object):
             columns = "*"
         else:
             columns = ", ".join(args)
-        q = self._query_templates['table']['unique'] % (columns, self.name)
+        q = self._query_templates['table']['unique'].format(columns=columns, table=self.name)
         return pd.io.sql.read_sql(q, self._con)
 
     def sample(self, n=10):
@@ -545,7 +545,7 @@ class Table(object):
         8        283951   9258717       0.99
         9        404453  13186975       0.99
         """
-        q = self._query_templates['table']['sample'] % (self.name, n)
+        q = self._query_templates['table']['sample'].format(table=self.name, n=n)
         return pd.io.sql.read_sql(q, self._con)
 
 
@@ -660,10 +660,10 @@ class S3(object):
         if os.path.exists(f):
             creds = json.loads(base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
             if 'access_key' not in creds:
-                raise Exception("`access_key` not found in s3 profile '%s'" % profile)
+                raise Exception("`access_key` not found in s3 profile '{0}'".format(profile))
             self.access_key = creds['access_key']
             if 'access_key' not in creds:
-                raise Exception("`secret_key` not found in s3 profile '%s'" % profile)
+                raise Exception("`secret_key` not found in s3 profile '{0}'".format(profile))
             self.secret_key = creds['secret_key']
 
 
@@ -1021,12 +1021,12 @@ class DB(object):
         if self.dbtype in ["postgres", "redshift", "sqlite", "mysql"]:
             if limit:
                 q = q.rstrip().rstrip(";")
-                q = "select * from (%s) q limit %d" % (q, limit)
+                q = "select * from ({q}) q limit {limit}".format(q=q, limit=limit)
             return q
         # mssql
         else:
             if limit:
-                q = "select top %d * from (%s) q" % (limit, q)
+                q = "select top {limit} * from ({q}) q".format(limit=limit, q=q)
             return q
 
     def query(self, q, limit=None):
@@ -1199,13 +1199,13 @@ class DB(object):
         rows_to_insert = []
         tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
         for table in tables:
-            for row in self.cur.execute("pragma table_info(%s)" % table):
+            for row in self.cur.execute("pragma table_info({0})".format(table)):
                 rows_to_insert.append((table, row[1], row[2]))
         # find for table and column names
         self.cur.execute("drop table if exists tmp_dbpy_schema;")
         self.cur.execute("create temp table tmp_dbpy_schema(table_name varchar, column_name varchar, data_type varchar);")
         for row in rows_to_insert:
-            self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('%s', '%s', '%s');" % row)
+            self.cur.execute("insert into tmp_dbpy_schema(table_name, column_name, data_type) values('{0}', '{1}', '{2}');".format(*row))
         self.cur.execute("SELECT name, sql  FROM sqlite_master where sql like '%REFERENCES%';")
 
         # find for foreign keys
@@ -1220,8 +1220,8 @@ class DB(object):
             for (column_name, foreign_table, foreign_key) in re.findall(rgx, sql):
                 foreign_keys.append((table_name, column_name, foreign_table, foreign_key))
         for row in foreign_keys:
-            sql_insert = "insert into tmp_dbpy_foreign_keys(table_name, column_name, foreign_table, foreign_column) values('%s', '%s', '%s', '%s');"
-            self.cur.execute(sql_insert % row)
+            sql_insert = "insert into tmp_dbpy_foreign_keys(table_name, column_name, foreign_table, foreign_column) values('{0}', '{1}', '{2}', '{3}');"
+            self.cur.execute(sql_insert.format(*row))
 
         self.con.commit()
         sys.stderr.write("finished!\n")
@@ -1257,8 +1257,8 @@ class DB(object):
             self.cur.execute(cmd)
         except Exception as e:
             print ("Error executing command:")
-            print ("\t '%s'" % cmd)
-            print ("Exception: %s" % str(e))
+            print ("\t '{0}'".format(cmd))
+            print ("Exception: {0}".format(e))
             self.con.rollback()
 
     def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000,
@@ -1315,13 +1315,13 @@ class DB(object):
             raise Exception("Must specify AWS_SECRET_KEY as either function argument or as an environment variable `AWS_SECRET_KEY`")
 
         conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
-        bucket_name = "dbpy-%s" % str(uuid.uuid4())
+        bucket_name = "dbpy-{0}".format(uuid.uuid4())
         bucket = conn.create_bucket(bucket_name)
         # we're going to chunk the file into pieces. according to amazon, this is
         # much faster when it comes time to run the \COPY statment.
         #
         # see http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
-        sys.stderr.write("Transfering %s to s3 in chunks" % name)
+        sys.stderr.write("Transfering {0} to s3 in chunks".format(name))
         len_df = len(df)
         chunks = range(0, len_df, chunk_size)
         def upload_chunk(i):
@@ -1349,7 +1349,7 @@ class DB(object):
         sys.stderr.write("done\n")
 
         if drop_if_exists:
-            sql = "DROP TABLE IF EXISTS %s;" % name
+            sql = "DROP TABLE IF EXISTS {0};".format(name)
             if print_sql:
                 sys.stderr.write(sql + "\n")
             self._try_command(sql)
@@ -1432,10 +1432,10 @@ def remove_profile(name, s3=False):
         try:
             open(f)
         except:
-            raise Exception("Profile '%s' does not exist. Could not find file %s" % (name, f))
+            raise Exception("Profile '{0}' does not exist. Could not find file {1}".format(name, f))
         os.remove(f)
     except Exception as e:
-        raise Exception("Could not remove profile %s! Excpetion: %s" % (name, str(e)))
+        raise Exception("Could not remove profile {0}! Excpetion: {1}".format(name, e))
 
 
 def DemoDB():

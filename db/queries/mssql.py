@@ -1,16 +1,16 @@
 queries = {
     "column": {
-        "head": "select top %d %s from %s;",
-        "all": "select %s from %s;",
-        "unique": "select distinct %s from %s;",
-        "sample": "select top %d %s from %s order by rand();"
+        "head": "select top {n} {name} from {table};",
+        "all": "select {name} from {table};",
+        "unique": "select distinct {name} from {table};",
+        "sample": "select top {n} {name} from {table} order by rand();"
     },
     "table": {
-        "select": "select %s from %s;",
-        "head": "select top %d * from %s;",
-        "all": "select * from %s;",
-        "unique": "select distinct %s from %s;",
-        "sample": "select top %d * from %s order by rand();"
+        "select": "select {columns} from {table};",
+        "head": "select top {n} * from {table};",
+        "all": "select * from {table};",
+        "unique": "select distinct {columns} from {table};",
+        "sample": "select top {n} * from {table} order by rand();"
     },
     "system": {
         "schema_no_system": """
