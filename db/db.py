@@ -74,12 +74,13 @@ class Column(object):
     can use it to do some basic DB exploration and you can also use it to
     execute simple queries.
     """
-    def __init__(self, con, query_templates, table, name, dtype):
+    def __init__(self, con, query_templates, table, name, dtype, keys_per_column):
         self._con = con
         self._query_templates = query_templates
         self.table = table
         self.name = name
         self.type = dtype
+        self.keys_per_column = keys_per_column
 
         self.foreign_keys = []
         self.ref_keys = []
@@ -103,12 +104,16 @@ class Column(object):
         keys = []
         for col in self.foreign_keys:
             keys.append("%s.%s" % (col.table, col.name))
+        if self.keys_per_column is not None and len(keys) > self.keys_per_column:
+            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys)-self.keys_per_column)]
         return ", ".join(keys)
 
     def _str_ref_keys(self):
         keys = []
         for col in self.ref_keys:
             keys.append("%s.%s" % (col.table, col.name))
+        if self.keys_per_column is not None and len(keys) > self.keys_per_column:
+            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys)-self.keys_per_column)]
         return ", ".join(keys)
 
     def head(self, n=6):
@@ -251,13 +256,14 @@ class Table(object):
     A Table is an in-memory reference to a table in a database. You can use it to get more info
     about the columns, schema, etc. of a table and you can also use it to execute queries.
     """
-    def __init__(self, con, query_templates, name, cols):
+    def __init__(self, con, query_templates, name, cols, keys_per_column):
         self.name = name
         self._con = con
         self._cur = con.cursor()
         self._query_templates = query_templates
         self.foreign_keys = []
         self.ref_keys = []
+        self.keys_per_column = keys_per_column
 
         self._columns = cols
         for col in cols:
@@ -269,7 +275,7 @@ class Table(object):
         self._cur.execute(self._query_templates['system']['foreign_keys_for_table'] % (self.name))
         for (column_name, foreign_table, foreign_column) in self._cur:
             col = getattr(self, column_name)
-            foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type)
+            foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type, self.keys_per_column)
             self.foreign_keys.append(foreign_key)
             col.foreign_keys.append(foreign_key)
             setattr(self, column_name, col)
@@ -279,7 +285,7 @@ class Table(object):
         self._cur.execute(self._query_templates['system']['ref_keys_for_table'] % (self.name))
         for (column_name, ref_table, ref_column) in self._cur:
             col = getattr(self, column_name)
-            ref_key = Column(con, queries_templates, ref_table, ref_column, col.type)
+            ref_key = Column(con, queries_templates, ref_table, ref_column, col.type, self.keys_per_column)
             self.ref_keys.append(ref_key)
             col.ref_keys.append(ref_key)
             setattr(self, column_name, col)
@@ -698,6 +704,10 @@ class DB(object):
         method. You can override it by adding limit={X} to the `query` method, or
         by passing an argument to `DB()`. None indicates that there will be no
         limit (That's right, you'll be limitless. Bradley Cooper style.)
+    keys_per_column: int, None
+        Default number of keys to display in the foreign and reference keys.
+        This is used to control the rendering of PrettyTable a bit. None means
+        that you'll have verrrrrrrry wide columns in some cases.
 
     Examples
     --------
@@ -714,7 +724,7 @@ class DB(object):
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
-            profile="default", exclude_system_tables=True, limit=1000):
+            profile="default", exclude_system_tables=True, limit=1000, keys_per_column=None):
 
         if port is None:
             if dbtype=="postgres":
@@ -746,6 +756,7 @@ class DB(object):
             self.dbtype = dbtype
             self.schemas = schemas
             self.limit = limit
+            self.keys_per_column = keys_per_column
 
         if self.dbtype is None:
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
@@ -854,6 +865,7 @@ class DB(object):
             self.dbtype = creds.get('dbtype')
             self.schemas = creds.get('schemas')
             self.limit = creds.get('limit')
+            self.keys_per_column = creds.get('keys_per_column')
         else:
             raise Exception("Credentials not configured!")
 
@@ -891,6 +903,7 @@ class DB(object):
             "dbtype": self.dbtype,
             "schemas": self.schemas,
             "limit": self.limit,
+            "keys_per_column": self.keys_per_column,
         }
         with open(dotfile, 'wb') as f:
             data = json.dumps(creds)
@@ -1234,9 +1247,9 @@ class DB(object):
         for (table_name, column_name, data_type)in self.cur:
             if table_name not in tables:
                 tables[table_name] = []
-            tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type))
+            tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type, self.keys_per_column))
 
-        self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t]) for t in sorted(tables.keys())])
+        self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
         sys.stderr.write("done!\n")
 
     def _try_command(self, cmd):

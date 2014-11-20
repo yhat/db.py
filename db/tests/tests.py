@@ -68,6 +68,24 @@ class PandaSQLTest(unittest.TestCase):
         col = db.tables.Track.TrackId.sample(n=10)
         self.assertEqual(len(col), 10)
 
+    def test_table_keys_per_column(self):
+        short_db = DemoDB(keys_per_column=1)
+        self.assertEqual("""+----------------------------------------------------------------------------------------+
+|                                         Track                                          |
++--------------+---------------+-----------------------+---------------------------------+
+| Column       | Type          | Foreign Keys          | Reference Keys                  |
++--------------+---------------+-----------------------+---------------------------------+
+| TrackId      | INTEGER       |                       | InvoiceLine.TrackId, (+ 1 more) |
+| Name         | NVARCHAR(200) |                       |                                 |
+| AlbumId      | INTEGER       | Album.AlbumId         |                                 |
+| MediaTypeId  | INTEGER       | MediaType.MediaTypeId |                                 |
+| GenreId      | INTEGER       | Genre.GenreId         |                                 |
+| Composer     | NVARCHAR(220) |                       |                                 |
+| Milliseconds | INTEGER       |                       |                                 |
+| Bytes        | INTEGER       |                       |                                 |
+| UnitPrice    | NUMERIC(10,2) |                       |                                 |
++--------------+---------------+-----------------------+---------------------------------+""".strip(),
+                         '{0}'.format(short_db.tables.Track.__repr__()).strip())
 
 if __name__=="__main__":
     unittest.main()
