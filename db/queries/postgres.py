@@ -1,16 +1,16 @@
 queries = {
     "column": {
-        "head": "select %s from %s limit %d;",
-        "all": "select %s from %s;",
-        "unique": "select distinct %s from %s;",
-        "sample": "select %s from %s order by random() limit %d;"
+        "head": "select {column} from {table} limit {n};",
+        "all": "select {column} from {table};",
+        "unique": "select distinct {column} from {table};",
+        "sample": "select {column} from {table} order by random() limit {n};"
     },
     "table": {
-        "select": "select %s from %s;",
-        "head": "select * from %s limit %d;",
-        "all": "select * from %s;",
-        "unique": "select distinct %s from %s;",
-        "sample": "select * from %s order by random() limit %d;"
+        "select": "select {columns} from {table};",
+        "head": "select * from {table} limit {n};",
+        "all": "select * from {table};",
+        "unique": "select distinct {columns} from {table};",
+        "sample": "select * from {table} order by random() limit {n};"
     },
     "system": {
         "schema_no_system": """
