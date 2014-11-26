@@ -1,9 +1,9 @@
 queries = {
     "column": {
-        "head": "select top {n} {name} from {table};",
-        "all": "select {name} from {table};",
-        "unique": "select distinct {name} from {table};",
-        "sample": "select top {n} {name} from {table} order by rand();"
+        "head": "select top {n} {column} from {table};",
+        "all": "select {column} from {table};",
+        "unique": "select distinct {column} from {table};",
+        "sample": "select top {n} {column} from {table} order by rand();"
     },
     "table": {
         "select": "select {columns} from {table};",
