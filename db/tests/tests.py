@@ -3,12 +3,9 @@ from db import DemoDB, DB, list_profiles, remove_profile
 import unittest
 
 
-#db = DemoDB()
-
 class PandaSQLTest(unittest.TestCase):
 
     def setUp(self):
-        #pass
         self.db = DemoDB()
 
     def test_query_rowsum(self):

@@ -1438,11 +1438,11 @@ def remove_profile(name, s3=False):
         raise Exception("Could not remove profile {0}! Excpetion: {1}".format(name, e))
 
 
-def DemoDB():
+def DemoDB(keys_per_column=None):
     """
     Provides an instance of DB that hooks up to the Chinook DB
     See http://chinookdatabase.codeplex.com/ for more info.
     """
     _ROOT = os.path.abspath(os.path.dirname(__file__))
     chinook = os.path.join(_ROOT, 'data', "chinook.sqlite")
-    return DB(filename=chinook, dbtype="sqlite")
+    return DB(filename=chinook, dbtype="sqlite", keys_per_column=keys_per_column)
