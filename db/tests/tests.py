@@ -54,6 +54,10 @@ class PandaSQLTest(unittest.TestCase):
         df = self.db.tables.Artist.sample(n=10)
         self.assertEqual(len(df), 10)
 
+    def test_table_uniqe(self):
+	df = self.db.tables.Track.unique("GenreId", "MediaTypeId")
+	self.assertEqual(len(df), 38)
+
     def test_column_head(self):
         col = self.db.tables.Track.TrackId.head()
         self.assertEqual(len(col), 6)
@@ -65,6 +69,10 @@ class PandaSQLTest(unittest.TestCase):
     def test_column_sample(self):
         col = self.db.tables.Track.TrackId.sample(n=10)
         self.assertEqual(len(col), 10)
+
+    def test_column_unique(self):
+	col = self.db.tables.Customer.Country.unique()
+	self.assertEqual(len(col), 24)
 
     def test_table_keys_per_column(self):
         short_db = DemoDB(keys_per_column=1)

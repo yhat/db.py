@@ -413,6 +413,16 @@ __Arguments__
 >>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) 
 ```
 
+## Tests
+
+To run individual tests:
+
+    $ python -m unittest test_module.TestClass.test_method
+
+To run all the tests:
+
+    $ python -m unittest discover <path_to_tests_folder> -v
+
 ## Contributing
 See either the TODO below or [Adding a Database](./docs/adding-a-db-checklist.md).
 

@@ -152,7 +152,7 @@ class Column(object):
 
     def all(self):
         """
-        Returns all unique values as a DataFrame. This is executing:
+        Returns entire column  as a DataFrame. This is executing:
             SELECT
                 DISTINCT
                     <name_of_the_column>
