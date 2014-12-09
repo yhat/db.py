@@ -1307,10 +1307,6 @@ class DB(object):
             # if boto is present, set the bucket_location to default.
             # we can't do this in the function definition because we're 
             # lazily importing boto only if necessary here.
-
-            print "bucket location: " + str(bucket_location)
-            print type(bucket_location)
-
             if bucket_location is None:
                 bucket_location = Location.DEFAULT
 
