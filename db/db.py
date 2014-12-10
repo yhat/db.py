@@ -1263,7 +1263,7 @@ class DB(object):
 
     def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000,
                     AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, s3=None,
-                    print_sql=False):
+                    print_sql=False, bucket_location=None):
         """
         Upload a dataframe to redshift via s3.
 
@@ -1290,6 +1290,9 @@ class DB(object):
             alternative to using keys, you can use an S3 object
         print_sql: bool (False)
             option for printing sql statement that will be executed
+        bucket_location: boto.s3.connection.Location
+            a specific AWS location in which to create the temporary transfer s3
+            bucket. This should match your redshift cluster's region.
 
         Examples
         --------
@@ -1299,6 +1302,14 @@ class DB(object):
         try:
             from boto.s3.connection import S3Connection
             from boto.s3.key import Key
+            from boto.s3.connection import Location
+
+            # if boto is present, set the bucket_location to default.
+            # we can't do this in the function definition because we're 
+            # lazily importing boto only if necessary here.
+            if bucket_location is None:
+                bucket_location = Location.DEFAULT
+
         except ImportError:
             raise Exception("Couldn't find boto library. Please ensure it is installed")
 
@@ -1316,7 +1327,7 @@ class DB(object):
 
         conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
         bucket_name = "dbpy-{0}".format(uuid.uuid4())
-        bucket = conn.create_bucket(bucket_name)
+        bucket = conn.create_bucket(bucket_name, location=bucket_location)
         # we're going to chunk the file into pieces. according to amazon, this is
         # much faster when it comes time to run the \COPY statment.
         #
