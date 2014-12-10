@@ -791,6 +791,7 @@ class DB(object):
                         arg = "host"
                     creds[arg] = value
             self.con = mysql_connect(**creds)
+            self.con.autocommit(True)
             self.cur = self.con.cursor()
         elif self.dbtype=="mssql":
             if not HAS_ODBC and not HAS_PYMSSQL:
