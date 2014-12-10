@@ -1233,7 +1233,8 @@ class DB(object):
         """
 
         sys.stderr.write("Refreshing schema. Please wait...")
-        if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates:
+        if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates['system']:
+            schemas_str = ','.join([repr(schema) for schema in self.schemas])
             q = self._query_templates['system']['schema_specified'] % str(self.schemas)
         elif exclude_system_tables==True:
             q = self._query_templates['system']['schema_no_system']
