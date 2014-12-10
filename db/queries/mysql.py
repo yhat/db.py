@@ -38,7 +38,7 @@ queries = {
                     , udt_name
                 from
                     information_schema.columns
-                where table_schema in ({table});
+                where table_schema in (%s);
                 """,
         "foreign_keys_for_table": """
         select
