@@ -1265,7 +1265,7 @@ class DB(object):
 
     def to_redshift(self, name, df, drop_if_exists=False, chunk_size=10000,
                     AWS_ACCESS_KEY=None, AWS_SECRET_KEY=None, s3=None,
-                    print_sql=False, bucket_location=None):
+                    print_sql=False, bucket_location=None, s3_bucket=None):
         """
         Upload a dataframe to redshift via s3.
 
@@ -1328,8 +1328,13 @@ class DB(object):
             raise Exception("Must specify AWS_SECRET_KEY as either function argument or as an environment variable `AWS_SECRET_KEY`")
 
         conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+        #this way users with permission on specific buckets can use this feature
         bucket_name = "dbpy-{0}".format(uuid.uuid4())
-        bucket = conn.create_bucket(bucket_name, location=bucket_location)
+        if s3_bucket:
+            bucket = conn.get_bucket(s3_bucket)
+            bucket_name = s3_bucket
+        else:
+            bucket = conn.create_bucket(bucket_name, location=bucket_location)
         # we're going to chunk the file into pieces. according to amazon, this is
         # much faster when it comes time to run the \COPY statment.
         #
@@ -1396,7 +1401,8 @@ class DB(object):
         sys.stderr.write("Tearing down bucket...")
         for key in bucket.list():
             key.delete()
-        conn.delete_bucket(bucket_name)
+        if not s3_bucket:
+            conn.delete_bucket(bucket_name)
         sys.stderr.write("done!")
 
 def list_profiles():
