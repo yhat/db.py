@@ -14,6 +14,7 @@ import sys
 
 import pandas as pd
 from prettytable import PrettyTable
+import pybars 
 
 from .queries import mysql as mysql_templates
 from .queries import postgres as postgres_templates
@@ -827,6 +828,7 @@ class DB(object):
 
         self.tables = TableSet([])
         self.refresh_schema(exclude_system_tables)
+        self.handlebars = pybars.Compiler()
 
     def __str__(self):
         return "DB[{dbtype}][{hostname}]:{port} > {user}@{dbname}".format(
@@ -1029,8 +1031,25 @@ class DB(object):
             if limit:
                 q = "select top {limit} * from ({q}) q".format(limit=limit, q=q)
             return q
+    
+    def _apply_handlebars(self, q, data, union=True):
+        q = unicode(q)
+        template = self.handlebars.compile(q)
+        if isinstance(data, list):
+            query = [template(item) for item in data] 
+            query = [str(item) for item in query]
+            if union==True:
+                query = "\nUNION ALL".join(query)
+            else:
+                query = "\n".join(query)
+        elif isinstance(data, dict):
+            query = template(data)
+            query = str(query)
+        else:
+            return q
+        return query
 
-    def query(self, q, limit=None):
+    def query(self, q, data=None, union=True, limit=None):
         """
         Query your database with a raw string.
 
@@ -1038,6 +1057,12 @@ class DB(object):
         ----------
         q: str
             Query string to execute
+        data: list, dict
+            Optional argument for handlebars-queries. Data will be passed to the
+            template and rendered using handlebars.
+        union: bool
+            Whether or not "UNION ALL" handlebars templates. This will return
+            any handlebars queries as a single data frame.
         limit: int
             Number of records to return
 
@@ -1131,14 +1156,56 @@ class DB(object):
         7                         Inject The Venom       0.99
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
-        """
+        >>> template = '''
+        SELECT
+            '{{ name }}' as table_name
+            , COUNT(*) as cnt
+        FROM
+            {{ name }}
+        GROUP BY
+            table_name
+        '''
+        >>> data = [
+            {"name": "Album"},
+            {"name": "Artist"},
+            {"name": "Track"}
+        ]
+        >>> db.query(q, data=data)
+          table_name   cnt
+        0      Album   347
+        1     Artist   275
+        2      Track  3503
+        >>> q = '''
+        SELECT
+        {{#cols}}
+            {{#if @last}}
+                {{ . }}
+            {{else}}
+                {{ . }} ,
+            {{/if}}
+        {{/cols}}
+        FROM
+            Album;
+        '''
+        >>> data = {"cols": ["AlbumId", "Title", "ArtistId"]}
+        >>> db.query(q, data=data, union=False)
+           AlbumId                                  Title  ArtistId
+        0        1  For Those About To Rock We Salute You         1
+        1        2                      Balls to the Wall         2
+        2        3                      Restless and Wild         2
+        3        4                      Let There Be Rock         1
+        4        5                               Big Ones         3
+
+    """
+        if data:
+            q = self._apply_handlebars(q, data, union)
         if limit==False:
             pass
         else:
             q = self._assign_limit(q, limit)
         return pd.io.sql.read_sql(q, self.con)
 
-    def query_from_file(self, filename, limit=None):
+    def query_from_file(self, filename, data, union=True, limit=None):
         """
         Query your database from a file.
 
@@ -1146,6 +1213,14 @@ class DB(object):
         ----------
         filename: str
             A SQL script
+        data: list, dict
+            Optional argument for handlebars-queries. Data will be passed to the
+            template and rendered using handlebars.
+        union: bool
+            Whether or not "UNION ALL" handlebars templates. This will return
+            any handlebars queries as a single data frame.
+        limit: int
+            Number of records to return
 
         Examples
         --------
@@ -1189,7 +1264,10 @@ class DB(object):
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
         """
-        return self.query(open(filename).read(), limit)
+        q = open(filename).read()
+        if data:
+            q = self._apply_handlebars(q, data, union)
+        return self.query(q, limit)
 
     def _create_sqlite_metatable(self):
         """

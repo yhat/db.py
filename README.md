@@ -88,6 +88,28 @@ Directly integrated with `pandas`
 5   6713451       0.99
 ```
 
+Create queies using [Hanldebars style templates](http://handlebarsjs.com/)
+```python
+q = """
+SELECT
+    '{{ name }}' as table_name, sum(1) as cnt
+FROM
+    {{ name }}
+GROUP BY
+    table_name
+"""
+data = [
+  {"name": "Album"},
+  {"name": "Artist"},
+  {"name": "Track"}
+]
+db.query(q, data=data)
+  table_name   cnt
+0      Album   347
+1     Artist   275
+2      Track  3503
+```
+
 Search your schema
 ```python
 >>> db.find_column("*Id*")
