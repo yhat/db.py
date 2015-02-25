@@ -88,7 +88,7 @@ Directly integrated with `pandas`
 5   6713451       0.99
 ```
 
-Create queies using [Hanldebars style templates](http://handlebarsjs.com/)
+Create queries using [Handlebars style templates](http://handlebarsjs.com/)
 ```python
 q = """
 SELECT
