@@ -22,7 +22,7 @@ you a lot of work.
 ## Databases Requested
 
 - Oracle
-- Terradata
+- Teradata
 
 ## Checklist
 For this example we'll be adding a database called `foosql`.
