@@ -1205,7 +1205,7 @@ class DB(object):
             q = self._assign_limit(q, limit)
         return pd.io.sql.read_sql(q, self.con)
 
-    def query_from_file(self, filename, data, union=True, limit=None):
+    def query_from_file(self, filename, data=None, union=True, limit=None):
         """
         Query your database from a file.
 
@@ -1264,9 +1264,12 @@ class DB(object):
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
         """
-        q = open(filename).read()
-        if data:
-            q = self._apply_handlebars(q, data, union)
+
+        with open(filename) as fp:
+            q = fp.read()
+            if data:
+                q = self._apply_handlebars(q, data, union)
+
         return self.query(q, limit)
 
     def _create_sqlite_metatable(self):
