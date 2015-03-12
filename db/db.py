@@ -549,6 +549,11 @@ class Table(object):
         q = self._query_templates['table']['sample'].format(table=self.name, n=n)
         return pd.io.sql.read_sql(q, self._con)
 
+    @property
+    def count(self):
+        """Return total of rows from table."""
+        return len(self.all())
+
 
 class TableSet(object):
     """

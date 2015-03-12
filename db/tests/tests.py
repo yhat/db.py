@@ -96,6 +96,10 @@ class PandaSQLTest(unittest.TestCase):
     def tearDown(self):
 	pass
 
+    def test_table_count_rows(self):
+        count = self.db.tables.Invoice.count
+        self.assertEqual(count), 412)
+
 if __name__ == "__main__":
     unittest.main()
 
