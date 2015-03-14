@@ -1038,7 +1038,8 @@ class DB(object):
             return q
     
     def _apply_handlebars(self, q, data, union=True):
-        q = unicode(q)
+        if (sys.version_info < (3, 0)):
+            q = unicode(q)
         template = self.handlebars.compile(q)
         if isinstance(data, list):
             query = [template(item) for item in data] 
