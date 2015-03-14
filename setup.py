@@ -5,7 +5,7 @@ from setuptools import find_packages
 required = [
     "prettytable==0.7.2",
     "pandas",
-    "pybars3==0.7.2"
+    "pybars3"
 ]
 
 setup(
