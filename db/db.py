@@ -63,7 +63,7 @@ except ImportError:
     try:
         import pypyodbc as pyo
         HAS_ODBC = True
-    except:
+    except ImportError:
         HAS_ODBC = False
 
 try:
