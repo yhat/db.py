@@ -57,10 +57,14 @@ except ImportError:
     HAS_SQLITE = False
 
 try:
-    import pyodbc
+    import pyodbc as pyo
     HAS_ODBC = True
 except ImportError:
-    HAS_ODBC = False
+    try:
+        import pypyodbc as pyo
+        HAS_ODBC = True
+    except:
+        HAS_ODBC = False
 
 try:
     import pymssql
@@ -714,6 +718,8 @@ class DB(object):
         Default number of keys to display in the foreign and reference keys.
         This is used to control the rendering of PrettyTable a bit. None means
         that you'll have verrrrrrrry wide columns in some cases.
+    driver: str, None
+        Driver for mssql/pyodbc connections.
 
     Examples
     --------
@@ -730,7 +736,8 @@ class DB(object):
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
-            profile="default", exclude_system_tables=True, limit=1000, keys_per_column=None):
+            profile="default", exclude_system_tables=True, limit=1000,
+            keys_per_column=None, driver=None):
 
         if port is None:
             if dbtype=="postgres":
@@ -763,6 +770,7 @@ class DB(object):
             self.schemas = schemas
             self.limit = limit
             self.keys_per_column = keys_per_column
+            self.driver = driver
 
         if self.dbtype is None:
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
@@ -804,8 +812,8 @@ class DB(object):
                 raise Exception("Couldn't find pyodbc or pymssql libraries. Please ensure one of them is installed")
 
             if HAS_ODBC:
-                base_con = "Driver={0};Server={server};Database={database};".format(
-                    "SQL Server",
+                base_con = "Driver={driver};Server={server};Database={database};".format(
+                    driver=self.driver or "SQL Server",
                     server=self.hostname or "localhost",
                     database=self.dbname or ''
                 )
@@ -817,8 +825,18 @@ class DB(object):
                     )
                 ) or "{}{}".format(base_con, "Trusted_Connection=Yes;"))
 
-                self.con = pyodbc.connect(conn_str)
-                self.cur = self.con.cursor()
+                try:
+                    self.con = pyo.connect(conn_str)
+                    self.cur = self.con.cursor()
+                except:
+                    self.con = pyo.connect(
+                            driver=self.driver or "SQL Server",
+                            server=self.hostname or "localhost",
+                            port=self.port,
+                            database=self.dbname or '',
+                            uid=self.username,
+                            pwd=self.password)
+                    self.cur = self.con.cursor()
             elif HAS_PYMSSQL:
                 if hasattr(self, 'port'):
                     hostname = '{0}:{1}'.format(self.hostname, self.port)
