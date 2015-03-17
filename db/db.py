@@ -732,7 +732,7 @@ class DB(object):
                 port=5432, dbname="devdb", dbtype="postgres")
     >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
     >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
-    >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql")
+    >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql", driver="{FreeTDS}")
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
