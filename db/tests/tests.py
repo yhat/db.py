@@ -55,8 +55,8 @@ class PandaSQLTest(unittest.TestCase):
         self.assertEqual(len(df), 10)
 
     def test_table_uniqe(self):
-	df = self.db.tables.Track.unique("GenreId", "MediaTypeId")
-	self.assertEqual(len(df), 38)
+        df = self.db.tables.Track.unique("GenreId", "MediaTypeId")
+        self.assertEqual(len(df), 38)
 
     def test_column_head(self):
         col = self.db.tables.Track.TrackId.head()
