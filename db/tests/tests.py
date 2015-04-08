@@ -18,9 +18,9 @@ class PandaSQLTest(unittest.TestCase):
         self.assertEqual(len(df), 347)
 
     def test_query_from_file_rowsum(self):
-        with open("/tmp/testscript.sql", "w") as f:
+        with open("db/tests/testscript.sql", "w") as f:
             f.write("select * from Artist;")
-        df = self.db.query_from_file("/tmp/testscript.sql")
+        df = self.db.query_from_file("db/tests/testscript.sql")
         self.assertEqual(len(df), 275)
 
     def test_add_profile(self):
