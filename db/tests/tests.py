@@ -55,8 +55,8 @@ class PandaSQLTest(unittest.TestCase):
         self.assertEqual(len(df), 10)
 
     def test_table_uniqe(self):
-	df = self.db.tables.Track.unique("GenreId", "MediaTypeId")
-	self.assertEqual(len(df), 38)
+        df = self.db.tables.Track.unique("GenreId", "MediaTypeId")
+        self.assertEqual(len(df), 38)
 
     def test_column_head(self):
         col = self.db.tables.Track.TrackId.head()
@@ -71,8 +71,8 @@ class PandaSQLTest(unittest.TestCase):
         self.assertEqual(len(col), 10)
 
     def test_column_unique(self):
-	col = self.db.tables.Customer.Country.unique()
-	self.assertEqual(len(col), 24)
+        col = self.db.tables.Customer.Country.unique()
+        self.assertEqual(len(col), 24)
 
     def test_table_keys_per_column(self):
         short_db = DemoDB(keys_per_column=1)
@@ -94,11 +94,11 @@ class PandaSQLTest(unittest.TestCase):
                          '{0}'.format(short_db.tables.Track.__repr__()).strip())
     
     def tearDown(self):
-	pass
+        pass
 
     def test_table_count_rows(self):
         count = self.db.tables.Invoice.count
-        self.assertEqual(count), 412)
+        self.assertEqual(count, 412)
 
 if __name__ == "__main__":
     unittest.main()
