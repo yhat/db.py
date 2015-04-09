@@ -168,23 +168,16 @@ class Column(object):
         --------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.tables.Customer.Email.all()
-        0              luisg@embraer.com.br
-        1             leonekohler@surfeu.de
-        2               ftremblay@gmail.com
-        3             bjorn.hansen@yahoo.no
-        4          frantisekw@jetbrains.com
-        5                   hholy@gmail.com
-        6            astrid.gruber@apple.at
-        7             daan_peeters@apple.be
-        8             kara.nielsen@jubii.dk
-        9          eduardo@woodstock.com.br
-        10                 alero@uol.com.br
-        11    roberto.almeida@riotur.gov.br
-        ...
+        >>> db.tables.Customer.Email.all().head()
+        0        luisg@embraer.com.br
+        1       leonekohler@surfeu.de
+        2         ftremblay@gmail.com
+        3       bjorn.hansen@yahoo.no
+        4    frantisekw@jetbrains.com
+        Name: Email, dtype: object
         >>> df = db.tables.Customer.Email.all()
         >>> len(df)
-            59
+        59
         """
         q = self._query_templates['column']['all'].format(column=self.name, table=self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
@@ -918,6 +911,8 @@ class DB(object):
             db_filename = None
 
         user = os.path.expanduser("~")
+        #if not os.path.exists(user,".db.py_"):
+        #    os.makedirs(user,".db.py_")
         dotfile = os.path.join(user, ".db.py_" + profile)
         creds = {
             "username": self.username,
@@ -1536,9 +1531,10 @@ def list_profiles():
     profiles = {}
     user = os.path.expanduser("~")
     for f in os.listdir(user):
+        print(f)
         if f.startswith(".db.py_"):
-            profile = os.path.join(user, f)
-            profile = json.loads(base64.decodestring(open(profile).read()))
+            profilePath = os.path.join(user, f)
+            profile = json.loads(base64.decodestring(open(profilePath,'r').read()))
             profiles[f[7:]] = profile
     return profiles
 
