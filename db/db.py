@@ -721,16 +721,22 @@ class DB(object):
 
     Examples
     --------
+    db = DB(dbname="AdventureWorks2012", dbtype="mssql", driver="{FreeTDS}")
+        
     >>> from db import DB
-    >>> db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com",
-                port=5432, dbname="muppets", dbtype="postgres")
-    >>> db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131",
-                port=5432, dbname="muppets_redshift", dbtype="redshift")
-    >>> db = DB(username="dev", hostname="localhost",
-                port=5432, dbname="devdb", dbtype="postgres")
-    >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
-    >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
-    >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql", driver="{FreeTDS}")
+    >>> try:
+    ...     __import__('imp').find_module('psycopg2')
+    ...     db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com", port=5432, dbname="muppets", dbtype="postgres")
+    ...     db = DB(username="dev", hostname="localhost", port=5432, dbname="devdb", dbtype="postgres")
+    ...     db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131", port=5432, dbname="muppets_redshift", dbtype="redshift")
+    ... except ImportError:
+    ...     pass
+    >>> try:
+    ...     __import__('imp').find_module('pymysql')
+    ...     db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
+    ...     db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
+    ... except ImportError:
+    ...     pass
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
