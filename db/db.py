@@ -195,20 +195,20 @@ class Column(object):
         --------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.tables.Customer.FirstName.unique()
-        0          Luis
-        1        Leonie
-        2      Francois
-        3         Bjorn
-        4     Frantisek
-        5        Helena
-        6        Astrid
-        7          Daan
-        8          Kara
-        9       Eduardo
-        10    Alexandre
-        ...
+        >>> db.tables.Customer.FirstName.unique().head(10)
+        0         Luís
+        1       Leonie
+        2     François
+        3        Bjørn
+        4    Franti\u0161ek
+        5       Helena
+        6       Astrid
+        7         Daan
+        8         Kara
+        9      Eduardo
+        Name: FirstName, dtype: object
         >>> len(db.tables.Customer.LastName.unique())
+        59
         """
         q = self._query_templates['column']['unique'].format(column=self.name, table=self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
