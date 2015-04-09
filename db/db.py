@@ -229,22 +229,22 @@ class Column(object):
         n: int
             number of rows to sample
 
-        Examples
+        Examples (removed from doctest as we can't predict random names...)
         --------
-        >>> from db import DemoDB
-        >>> db = DemoDB()
-        >>> db.tables.Artist.Name.sample(10)
-        0                     Julian Bream
-        1                         Godsmack
-        2                             Lost
-        3                         Fretwork
-        4            Pedro Luis E A Parede
-        5            Philip Glass Ensemble
-        6                      Marvin Gaye
-        7                        Metallica
-        8                Alanis Morissette
-        9    Santana Feat. The Project G&B
-        Name: Name, dtype: object
+        from db import DemoDB
+        db = DemoDB()
+        db.tables.Artist.Name.sample(10)
+         0                        Pedro Luís & A Parede
+         1                   Santana Feat. Eric Clapton
+         2                                  Os Mutantes
+         3                              Banda Black Rio
+         4               Adrian Leaper & Doreen de Feis
+         5    Chicago Symphony Orchestra & Fritz Reiner
+         6                            Smashing Pumpkins
+         7                                   Spyro Gyra
+         8    Aaron Copland & London Symphony Orchestra
+         9      Sir Georg Solti & Wiener Philharmoniker
+         Name: Name, dtype: object
         """
         q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
