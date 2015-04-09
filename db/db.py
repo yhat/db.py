@@ -1591,8 +1591,9 @@ def list_profiles():
 
     Examples
     --------
-    >>> from db import list_profiles
-    >>> list_profiles()
+    No doctest, covered by unittest
+    
+    list_profiles()
     {'demo': {u'dbname': None,
       u'dbtype': u'sqlite',
       u'filename': u'/Users/glamp/repos/yhat/opensource/db.py/db/data/chinook.sqlite',
@@ -1611,17 +1612,17 @@ def list_profiles():
     profiles = {}
     user = os.path.expanduser("~")
     for f in os.listdir(user):
-        print(f)
         if f.startswith(".db.py_"):
             profilePath = os.path.join(user, f)
-            profile = json.loads(base64.decodestring(open(profilePath,'r').read()))
+            profile = json.loads(base64.decodestring(open(profilePath,'rb').read()).decode('utf-8'))
             profiles[f[7:]] = profile
     return profiles
 
 
 def remove_profile(name, s3=False):
     """
-    Removes a profile from your config
+    Removes a profile from your config   
+    
     """
     user = os.path.expanduser("~")
     if s3==True:
