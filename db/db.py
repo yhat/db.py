@@ -990,7 +990,20 @@ class DB(object):
         ----------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.find_column("Name") # returns all columns named "Name"
+        >>> len(db.find_column("Name").columns)
+        5
+        >>> len(db.find_column("*Id").columns)
+        20
+        >>> len(db.find_column("*Address*").columns)
+        3
+        >>> len(db.find_column("*Address*", data_type="NVARCHAR(70)").columns)
+        3
+        >>> len(db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]).columns)
+        17
+            
+        -= Should sort in some way for all those doctests to be viable... 
+        -= if not, there's always a random issue where rows are not in the same order, making doctest fail.
+        db.find_column("Name") # returns all columns named "Name"
         +-----------+-------------+---------------+
         | Table     | Column Name | Type          |
         +-----------+-------------+---------------+
@@ -1000,7 +1013,7 @@ class DB(object):
         | Playlist  |     Name    | NVARCHAR(120) |
         | Track     |     Name    | NVARCHAR(200) |
         +-----------+-------------+---------------+
-        >>> db.find_column("*Id") # returns all columns ending w/ Id
+        db.find_column("*Id") # returns all columns ending w/ Id
         +---------------+---------------+---------+
         | Table         |  Column Name  | Type    |
         +---------------+---------------+---------+
@@ -1013,19 +1026,19 @@ class DB(object):
         | Genre         |    GenreId    | INTEGER |
         | Invoice       |   InvoiceId   | INTEGER |
         | Invoice       |   CustomerId  | INTEGER |
-        | InvoiceLine   |   InvoiceId   | INTEGER |
         | InvoiceLine   |    TrackId    | INTEGER |
         | InvoiceLine   | InvoiceLineId | INTEGER |
+        | InvoiceLine   |   InvoiceId   | INTEGER |
         | MediaType     |  MediaTypeId  | INTEGER |
         | Playlist      |   PlaylistId  | INTEGER |
         | PlaylistTrack |    TrackId    | INTEGER |
         | PlaylistTrack |   PlaylistId  | INTEGER |
-        | Track         |  MediaTypeId  | INTEGER |
         | Track         |    TrackId    | INTEGER |
         | Track         |    AlbumId    | INTEGER |
+        | Track         |  MediaTypeId  | INTEGER |
         | Track         |    GenreId    | INTEGER |
         +---------------+---------------+---------+
-        >>> db.find_column("*Address*") # returns all columns containing Address
+        db.find_column("*Address*") # returns all columns containing Address
         +----------+----------------+--------------+
         | Table    |  Column Name   | Type         |
         +----------+----------------+--------------+
@@ -1033,8 +1046,36 @@ class DB(object):
         | Employee |    Address     | NVARCHAR(70) |
         | Invoice  | BillingAddress | NVARCHAR(70) |
         +----------+----------------+--------------+
-        >>> db.find_column("*Address*", data_type="NVARCHAR(70)") # returns all columns containing Address that are varchars
-        >>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) # returns all columns have an "e" and are NVARCHAR(70)S or INTEGERS
+        db.find_column("*Address*", data_type="NVARCHAR(70)") # returns all columns containing Address that are varchars
+        +----------+----------------+--------------+
+        | Table    |  Column Name   | Type         |
+        +----------+----------------+--------------+
+        | Customer |    Address     | NVARCHAR(70) |
+        | Employee |    Address     | NVARCHAR(70) |
+        | Invoice  | BillingAddress | NVARCHAR(70) |
+        +----------+----------------+--------------+                
+        db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) # returns all columns have an "e" and are NVARCHAR(70)S or INTEGERS
+        +-------------+----------------+--------------+
+        | Table       |  Column Name   | Type         |
+        +-------------+----------------+--------------+
+        | Customer    |    Address     | NVARCHAR(70) |
+        | Customer    |  SupportRepId  | INTEGER      |
+        | Customer    |   CustomerId   | INTEGER      |
+        | Employee    |   ReportsTo    | INTEGER      |
+        | Employee    |   EmployeeId   | INTEGER      |
+        | Employee    |    Address     | NVARCHAR(70) |
+        | Genre       |    GenreId     | INTEGER      |
+        | Invoice     |   InvoiceId    | INTEGER      |
+        | Invoice     |   CustomerId   | INTEGER      |
+        | Invoice     | BillingAddress | NVARCHAR(70) |
+        | InvoiceLine | InvoiceLineId  | INTEGER      |
+        | InvoiceLine |   InvoiceId    | INTEGER      |
+        | MediaType   |  MediaTypeId   | INTEGER      |
+        | Track       |  MediaTypeId   | INTEGER      |
+        | Track       |  Milliseconds  | INTEGER      |
+        | Track       |    GenreId     | INTEGER      |
+        | Track       |     Bytes      | INTEGER      |
+        +-------------+----------------+--------------+
         """
         if isinstance(data_type, str):
             data_type = [data_type]
