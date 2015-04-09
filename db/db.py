@@ -427,7 +427,7 @@ class Table(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> len(db.tables.Track.all())
-            3503
+        3503
         >>> df = db.tables.Track.all()
         """
 
