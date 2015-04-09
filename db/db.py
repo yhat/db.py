@@ -1140,23 +1140,22 @@ class DB(object):
         Examples
         --------
         >>> from db import DemoDB
-        >>> db.query("select * from Track")
-           TrackId                                     Name  AlbumId  MediaTypeId  \
+        >>> db = DemoDB()
+        
+        db.query("select * from Track").head(2)
+           TrackId                                     Name  AlbumId  MediaTypeId  \\\r
         0        1  For Those About To Rock (We Salute You)        1            1
         1        2                        Balls to the Wall        2            2
-        2        3                          Fast As a Shark        3            2
-
-           GenreId                                           Composer  Milliseconds  \
-        0        1          Angus Young, Malcolm Young, Brian Johnson        343719
-        1        1                                               None        342562
-        2        1  F. Baltes, S. Kaufman, U. Dirkscneider & W. Ho...        230619
-
-              Bytes  UnitPrice
-        0  11170334       0.99
-        1   5510424       0.99
-        2   3990994       0.99
-        ...
-        >>> db.query("select * from Track", limit=10)
+        <BLANKLINE>
+           GenreId                                   Composer  Milliseconds     Bytes  \\\r
+        0        1  Angus Young, Malcolm Young, Brian Johnson        343719  11170334
+        1        1                                       None        342562   5510424
+        <BLANKLINE>
+           UnitPrice
+        0       0.99
+        1       0.99
+        
+        db.query("select * from Track", limit=10)
            TrackId                                     Name  AlbumId  MediaTypeId  \
         0        1  For Those About To Rock (We Salute You)        1            1
         1        2                        Balls to the Wall        2            2
@@ -1193,17 +1192,20 @@ class DB(object):
         8   6599424       0.99
         9   8611245       0.99
         >>> q = '''
-        SELECT
-          a.Title
-          , t.Name
-          , t.UnitPrice
-        FROM
-          Album a
-        INNER JOIN
-          Track t
-            on a.AlbumId = t.AlbumId;
-        '''
-        >>> db.query(q, limit=10)
+        ... SELECT
+        ...   a.Title,
+        ...   t.Name,
+        ...   t.UnitPrice
+        ... FROM
+        ...   Album a
+        ... INNER JOIN
+        ...   Track t
+        ...     on a.AlbumId = t.AlbumId;
+        ... '''
+        >>> len(db.query(q))
+        3503
+        
+        db.query(q, limit=10)
                                            Title  \
         0  For Those About To Rock We Salute You
         1                      Balls to the Wall
@@ -1227,39 +1229,46 @@ class DB(object):
         7                         Inject The Venom       0.99
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
+        
         >>> template = '''
-        SELECT
-            '{{ name }}' as table_name
-            , COUNT(*) as cnt
-        FROM
-            {{ name }}
-        GROUP BY
-            table_name
-        '''
+        ...    SELECT
+        ...    '{{ name }}' as table_name,
+        ...    COUNT(*) as cnt
+        ... FROM
+        ...     {{ name }}
+        ... GROUP BY
+        ...     table_name
+        ... '''
         >>> data = [
-            {"name": "Album"},
-            {"name": "Artist"},
-            {"name": "Track"}
-        ]
-        >>> db.query(q, data=data)
+        ...    {"name": "Album"},
+        ...    {"name": "Artist"},
+        ...    {"name": "Track"}
+        ... ]
+        >>> 
+        
+        db.query(q, data=data)
           table_name   cnt
         0      Album   347
         1     Artist   275
         2      Track  3503
+
         >>> q = '''
-        SELECT
-        {{#cols}}
-            {{#if @last}}
-                {{ . }}
-            {{else}}
-                {{ . }} ,
-            {{/if}}
-        {{/cols}}
-        FROM
-            Album;
-        '''
+        ... SELECT
+        ... {{#cols}}
+        ...    {{#if @last}}
+        ...        {{ . }}
+        ...    {{else}}
+        ...        {{ . }} ,
+        ...    {{/if}}
+        ... {{/cols}}
+        ... FROM
+        ...    Album;
+        ... '''
         >>> data = {"cols": ["AlbumId", "Title", "ArtistId"]}
-        >>> db.query(q, data=data, union=False)
+        >>> len(db.query(q, data=data, union=False))
+        347
+        
+        db.query(q, data=data, union=False)
            AlbumId                                  Title  ArtistId
         0        1  For Those About To Rock We Salute You         1
         1        2                      Balls to the Wall         2
