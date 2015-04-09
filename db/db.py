@@ -723,20 +723,20 @@ class DB(object):
     --------
     db = DB(dbname="AdventureWorks2012", dbtype="mssql", driver="{FreeTDS}")
         
-    >>> from db import DB
-    >>> try:
-    ...     __import__('imp').find_module('psycopg2')
-    ...     db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com", port=5432, dbname="muppets", dbtype="postgres")
-    ...     db = DB(username="dev", hostname="localhost", port=5432, dbname="devdb", dbtype="postgres")
-    ...     db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131", port=5432, dbname="muppets_redshift", dbtype="redshift")
-    ... except ImportError:
-    ...     pass
-    >>> try:
-    ...     __import__('imp').find_module('pymysql')
-    ...     db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
-    ...     db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
-    ... except ImportError:
-    ...     pass
+    from db import DB
+    try:
+        __import__('imp').find_module('psycopg2')
+        db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com", port=5432, dbname="muppets", dbtype="postgres")
+        db = DB(username="dev", hostname="localhost", port=5432, dbname="devdb", dbtype="postgres")
+        db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131", port=5432, dbname="muppets_redshift", dbtype="redshift")
+    except ImportError:
+        pass
+    try:
+        __import__('imp').find_module('pymysql')
+        db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
+        db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
+    except ImportError:
+        pass
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
@@ -908,13 +908,17 @@ class DB(object):
         profile: str
             (optional) identifier/name for your database (i.e. "dw", "prod")
 
-        >>> db = DB(username="hank", password="foo",
-        >>>         hostname="prod.mardukas.com", dbname="bar")
-        >>> db.save_credentials(profile="production")
-        >>> db = DB(username="hank", password="foo",
-        >>>         hostname="staging.mardukas.com", dbname="bar")
-        >>> db.save_credentials(profile="staging")
-        >>> db = DB(profile="staging")
+        from db import DB
+        import pymysql
+        db = DB(username="hank", password="foo", hostname="prod.mardukas.com", dbname="bar", dbtype="mysql")
+        db.save_credentials(profile="production")
+        db = DB(username="hank", password="foo", hostname="staging.mardukas.com", dbname="bar", dbtype="mysql")
+        db.save_credentials(profile="staging")
+        db = DB(profile="staging")
+        
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.save_credentials(profile='test')
         """
         if self.filename:
             db_filename = os.path.join(os.getcwd(), self.filename)
