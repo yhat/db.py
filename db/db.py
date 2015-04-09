@@ -958,12 +958,12 @@ class DB(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.find_table("A*")
-            +--------+--------------------------+
-            | Table  | Columns                  |
-            +--------+--------------------------+
-            | Album  | AlbumId, Title, ArtistId |
-            | Artist | ArtistId, Name           |
-            +--------+--------------------------+
+        +--------+--------------------------+
+        | Table  | Columns                  |
+        +--------+--------------------------+
+        | Album  | AlbumId, Title, ArtistId |
+        | Artist | ArtistId, Name           |
+        +--------+--------------------------+
         >>> results = db.find_table("tmp*") # returns all tables prefixed w/ tmp
         >>> results = db.find_table("prod_*") # returns all tables prefixed w/ prod_
         >>> results = db.find_table("*Invoice*") # returns all tables containing trans
