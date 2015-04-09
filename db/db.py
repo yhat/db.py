@@ -234,17 +234,22 @@ class Column(object):
         from db import DemoDB
         db = DemoDB()
         db.tables.Artist.Name.sample(10)
-         0                        Pedro Luís & A Parede
-         1                   Santana Feat. Eric Clapton
-         2                                  Os Mutantes
-         3                              Banda Black Rio
-         4               Adrian Leaper & Doreen de Feis
-         5    Chicago Symphony Orchestra & Fritz Reiner
-         6                            Smashing Pumpkins
-         7                                   Spyro Gyra
-         8    Aaron Copland & London Symphony Orchestra
-         9      Sir Georg Solti & Wiener Philharmoniker
-         Name: Name, dtype: object
+        0                        Pedro Luís & A Parede
+        1                   Santana Feat. Eric Clapton
+        2                                  Os Mutantes
+        3                              Banda Black Rio
+        4               Adrian Leaper & Doreen de Feis
+        5    Chicago Symphony Orchestra & Fritz Reiner
+        6                            Smashing Pumpkins
+        7                                   Spyro Gyra
+        8    Aaron Copland & London Symphony Orchestra
+        9      Sir Georg Solti & Wiener Philharmoniker
+        Name: Name, dtype: object
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> df = db.tables.Artist.Name.sample(10)
+        >>> len(df)
+        10
         """
         q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
