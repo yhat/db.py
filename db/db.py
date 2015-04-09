@@ -1279,9 +1279,11 @@ class DB(object):
     """
         if data:
             q = self._apply_handlebars(q, data, union)
-        if limit==False:
-            pass
-        else:
+        #if limit==None:
+        #    pass
+        #else:
+        if limit:
+            print('Limit : %s' % limit)
             q = self._assign_limit(q, limit)
         return pd.io.sql.read_sql(q, self.con)
 
@@ -1305,21 +1307,27 @@ class DB(object):
         Examples
         --------
         >>> from db import DemoDB
+        >>> db = DemoDB()
         >>> q = '''
-        SELECT
-          a.Title
-          , t.Name
-          , t.UnitPrice
-        FROM
-          Album a
-        INNER JOIN
-          Track t
-            on a.AlbumId = t.AlbumId;
-        '''
-        >>> with open("myscript.sql", "w") as f:
+        ... SELECT
+        ...   a.Title,
+        ...   t.Name,
+        ...   t.UnitPrice
+        ... FROM
+        ...   Album a
+        ... INNER JOIN
+        ...   Track t
+        ...     on a.AlbumId = t.AlbumId;
+        ... '''
+        >>> with open("db/tests/myscript.sql", "w") as f:
         ...    f.write(q)
-        ...
-        >>> db.query_from_file(q, limit=10)
+        109
+        >>> len(db.query_from_file("db/tests/myscript.sql", limit=10))
+        10
+        >>> db.query_from_file("db/tests/myscript.sql", limit=10)        
+        
+        
+        db.query_from_file("db/tests/myscript.sql", limit=10)
                                            Title  \
         0  For Those About To Rock We Salute You
         1                      Balls to the Wall
@@ -1344,13 +1352,10 @@ class DB(object):
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
         """
-
         with open(filename) as fp:
             q = fp.read()
-            if data:
-                q = self._apply_handlebars(q, data, union)
 
-        return self.query(q, limit)
+        return self.query(q, data=data, union=union, limit=limit)
 
     def _create_sqlite_metatable(self):
         """
