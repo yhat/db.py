@@ -337,9 +337,13 @@ class Table(object):
         Examples
         --------
         >>> from db import DemoDB
-        >>> db = DemoDB()
+        >>> db = DemoDB()       
+        >>> db.tables.Track.select("Name")[:1].Name
+        0    For Those About To Rock (We Salute You)
+        Name: Name, dtype: object
+        
         # select name from the Track table
-        >>> db.tables.Track.select("Name")
+        db.tables.Track.select("Name")
                                                            Name
         0               For Those About To Rock (We Salute You)
         1                                     Balls to the Wall
@@ -376,8 +380,14 @@ class Table(object):
         --------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        # select name from the Track table
-        >>> db.tables.Track.head()
+        
+        
+        >>> db.tables.Track.count
+        3503
+        
+        -= Not in doctest as output is hard to predict
+        # select name from the Track table        
+        db.tables.Track.head()
            TrackId                                     Name  AlbumId  MediaTypeId  \
         0        1  For Those About To Rock (We Salute You)        1            1
         1        2                        Balls to the Wall        2            2
@@ -401,7 +411,8 @@ class Table(object):
         3   4331779       0.99
         4   6290521       0.99
         5   6713451       0.99
-        >>> db.tables.Track.head(1)
+        
+        db.tables.Track.head(1)
            TrackId                                     Name  AlbumId  MediaTypeId  \
         0        1  For Those About To Rock (We Salute You)        1            1
 
@@ -455,34 +466,34 @@ class Table(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.tables.Track.unique("GenreId")
-                GenreId
-            0         1
-            1         2
-            2         3
-            3         4
-            4         5
-            5         6
-            6         7
-            7         8
-            8         9
-            9        10
-            10       11
-            11       12
-            12       13
-            13       14
-            14       15
-            15       16
-            16       17
-            17       18
-            18       19
-            19       20
-            20       21
-            21       22
-            22       23
-            23       24
-            24       25
+            GenreId
+        0         1
+        1         2
+        2         3
+        3         4
+        4         5
+        5         6
+        6         7
+        7         8
+        8         9
+        9        10
+        10       11
+        11       12
+        12       13
+        13       14
+        14       15
+        15       16
+        16       17
+        17       18
+        18       19
+        19       20
+        20       21
+        21       22
+        22       23
+        23       24
+        24       25
         >>> len(db.tables.Track.unique("GenreId", "MediaTypeId"))
-            38
+        38
         """
         if len(args)==0:
             columns = "*"
@@ -509,9 +520,10 @@ class Table(object):
 
         Examples
         --------
-        >>> from db import DemoDB
-        >>> db = DemoDB()
-        >>> db.tables.Track.sample(10)
+        from db import DemoDB
+        db = DemoDB()
+        Not in doctest : can't predict sample        
+        db.tables.Track.sample(10)
            TrackId                                               Name  AlbumId  \
         0      274                                      Samba Makossa       25
         1     1971                                Girls, Girls, Girls      162
