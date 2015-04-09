@@ -140,15 +140,15 @@ class Column(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.tables.Customer.City.head()
-        0    Sao Jose dos Campos
+        0    São José dos Campos
         1              Stuttgart
-        2               Montreal
+        2               Montréal
         3                   Oslo
         4                 Prague
         5                 Prague
         Name: City, dtype: object
         >>> db.tables.Customer.City.head(2)
-        0    Sao Jose dos Campos
+        0    São José dos Campos
         1              Stuttgart
         Name: City, dtype: object
         """
