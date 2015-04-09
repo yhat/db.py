@@ -1283,7 +1283,6 @@ class DB(object):
         #    pass
         #else:
         if limit:
-            print('Limit : %s' % limit)
             q = self._assign_limit(q, limit)
         return pd.io.sql.read_sql(q, self.con)
 
@@ -1324,8 +1323,7 @@ class DB(object):
         109
         >>> len(db.query_from_file("db/tests/myscript.sql", limit=10))
         10
-        >>> db.query_from_file("db/tests/myscript.sql", limit=10)        
-        
+               
         
         db.query_from_file("db/tests/myscript.sql", limit=10)
                                            Title  \
