@@ -273,8 +273,8 @@ class Table(object):
         self._columns = cols
         for col in cols:
             attr = col.name
-            if attr in ("name", "con"):
-                attr = "_" + col.name
+            if attr in ("name", "con", "count"):
+                attr = self.name + "_" + col.name
             setattr(self, attr, col)
 
         self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name))
