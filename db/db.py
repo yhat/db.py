@@ -140,15 +140,15 @@ class Column(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.tables.Customer.City.head()
-        0    São José dos Campos
+        0    Sao Jose dos Campos
         1              Stuttgart
-        2               Montréal
+        2               Montreal
         3                   Oslo
         4                 Prague
         5                 Prague
         Name: City, dtype: object
         >>> db.tables.Customer.City.head(2)
-        0    São José dos Campos
+        0    Sao Jose dos Campos
         1              Stuttgart
         Name: City, dtype: object
         """
@@ -196,10 +196,10 @@ class Column(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.tables.Customer.FirstName.unique().head(10)
-        0         Luís
+        0         Luis
         1       Leonie
-        2     François
-        3        Bjørn
+        2     Francois
+        3        Bjorn
         4    Franti\u0161ek
         5       Helena
         6       Astrid
@@ -234,7 +234,7 @@ class Column(object):
         from db import DemoDB
         db = DemoDB()
         db.tables.Artist.Name.sample(10)
-        0                        Pedro Luís & A Parede
+        0                        Pedro Luis & A Parede
         1                   Santana Feat. Eric Clapton
         2                                  Os Mutantes
         3                              Banda Black Rio
