@@ -106,7 +106,7 @@ Directly integrated with ``pandas``
     4   6290521       0.99
     5   6713451       0.99
 
-Create queies using `Hanldebars style
+Create queries using `Handlebars style
 templates <http://handlebarsjs.com/>`__
 
 .. code:: python
