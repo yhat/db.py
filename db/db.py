@@ -592,6 +592,9 @@ class TableSet(object):
     def _repr_html_(self):
         return self._tablify().get_html_string()
 
+    def __len__(self):
+        return len(self.tables)
+
 class ColumnSet(object):
     """
     Set of Columns. Used for displaying search results in terminal/ipython
@@ -849,9 +852,16 @@ class DB(object):
                                            database=self.dbname)
                 self.cur = self.con.cursor()
 
-        self.tables = TableSet([])
-        self.refresh_schema(exclude_system_tables)
+        self._tables = TableSet([])
+        self._exclude_system_tables = exclude_system_tables
         self.handlebars = pybars.Compiler()
+
+    @property
+    def tables(self):
+        """A lazy loaded reference to the table metadata for the DB."""
+        if len(self._tables) == 0:
+            self.refresh_schema(self._exclude_system_tables)
+        return self._tables
 
     def __str__(self):
         return "DB[{dbtype}][{hostname}]:{port} > {user}@{dbname}".format(
@@ -1354,7 +1364,7 @@ class DB(object):
                 tables[table_name] = []
             tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type, self.keys_per_column))
 
-        self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
+        self._tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
         sys.stderr.write("done!\n")
 
     def _try_command(self, cmd):
