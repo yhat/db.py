@@ -140,15 +140,15 @@ class Column(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.tables.Customer.City.head()
-        0    Sao Jose dos Campos
+        0    São José dos Campos
         1              Stuttgart
-        2               Montreal
+        2               Montréal
         3                   Oslo
         4                 Prague
         5                 Prague
         Name: City, dtype: object
         >>> db.tables.Customer.City.head(2)
-        0    Sao Jose dos Campos
+        0    São José dos Campos
         1              Stuttgart
         Name: City, dtype: object
         """
@@ -168,23 +168,16 @@ class Column(object):
         --------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.tables.Customer.Email.all()
-        0              luisg@embraer.com.br
-        1             leonekohler@surfeu.de
-        2               ftremblay@gmail.com
-        3             bjorn.hansen@yahoo.no
-        4          frantisekw@jetbrains.com
-        5                   hholy@gmail.com
-        6            astrid.gruber@apple.at
-        7             daan_peeters@apple.be
-        8             kara.nielsen@jubii.dk
-        9          eduardo@woodstock.com.br
-        10                 alero@uol.com.br
-        11    roberto.almeida@riotur.gov.br
-        ...
+        >>> db.tables.Customer.Email.all().head()
+        0        luisg@embraer.com.br
+        1       leonekohler@surfeu.de
+        2         ftremblay@gmail.com
+        3       bjorn.hansen@yahoo.no
+        4    frantisekw@jetbrains.com
+        Name: Email, dtype: object
         >>> df = db.tables.Customer.Email.all()
         >>> len(df)
-            59
+        59
         """
         q = self._query_templates['column']['all'].format(column=self.name, table=self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
@@ -202,20 +195,20 @@ class Column(object):
         --------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.tables.Customer.FirstName.unique()
-        0          Luis
-        1        Leonie
-        2      Francois
-        3         Bjorn
-        4     Frantisek
-        5        Helena
-        6        Astrid
-        7          Daan
-        8          Kara
-        9       Eduardo
-        10    Alexandre
-        ...
+        >>> db.tables.Customer.FirstName.unique().head(10)
+        0         Luís
+        1       Leonie
+        2     François
+        3        Bjørn
+        4    Franti\u0161ek
+        5       Helena
+        6       Astrid
+        7         Daan
+        8         Kara
+        9      Eduardo
+        Name: FirstName, dtype: object
         >>> len(db.tables.Customer.LastName.unique())
+        59
         """
         q = self._query_templates['column']['unique'].format(column=self.name, table=self.table)
         return pd.io.sql.read_sql(q, self._con)[self.name]
@@ -236,22 +229,27 @@ class Column(object):
         n: int
             number of rows to sample
 
-        Examples
+        Examples (removed from doctest as we can't predict random names...)
         --------
+        from db import DemoDB
+        db = DemoDB()
+        db.tables.Artist.Name.sample(10)
+        0                        Pedro Luís & A Parede
+        1                   Santana Feat. Eric Clapton
+        2                                  Os Mutantes
+        3                              Banda Black Rio
+        4               Adrian Leaper & Doreen de Feis
+        5    Chicago Symphony Orchestra & Fritz Reiner
+        6                            Smashing Pumpkins
+        7                                   Spyro Gyra
+        8    Aaron Copland & London Symphony Orchestra
+        9      Sir Georg Solti & Wiener Philharmoniker
+        Name: Name, dtype: object
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.tables.Artist.Name.sample(10)
-        0                     Julian Bream
-        1                         Godsmack
-        2                             Lost
-        3                         Fretwork
-        4            Pedro Luis E A Parede
-        5            Philip Glass Ensemble
-        6                      Marvin Gaye
-        7                        Metallica
-        8                Alanis Morissette
-        9    Santana Feat. The Project G&B
-        Name: Name, dtype: object
+        >>> df = db.tables.Artist.Name.sample(10)
+        >>> len(df)
+        10
         """
         q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
@@ -273,8 +271,8 @@ class Table(object):
         self._columns = cols
         for col in cols:
             attr = col.name
-            if attr in ("name", "con"):
-                attr = "_" + col.name
+            if attr in ("name", "con", "count"):
+                attr = self.name + "_" + col.name
             setattr(self, attr, col)
 
         self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name))
@@ -339,9 +337,13 @@ class Table(object):
         Examples
         --------
         >>> from db import DemoDB
-        >>> db = DemoDB()
+        >>> db = DemoDB()       
+        >>> db.tables.Track.select("Name")[:1].Name
+        0    For Those About To Rock (We Salute You)
+        Name: Name, dtype: object
+        
         # select name from the Track table
-        >>> db.tables.Track.select("Name")
+        db.tables.Track.select("Name")
                                                            Name
         0               For Those About To Rock (We Salute You)
         1                                     Balls to the Wall
@@ -378,8 +380,14 @@ class Table(object):
         --------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        # select name from the Track table
-        >>> db.tables.Track.head()
+        
+        
+        >>> db.tables.Track.count
+        3503
+        
+        -= Not in doctest as output is hard to predict
+        # select name from the Track table        
+        db.tables.Track.head()
            TrackId                                     Name  AlbumId  MediaTypeId  \
         0        1  For Those About To Rock (We Salute You)        1            1
         1        2                        Balls to the Wall        2            2
@@ -403,7 +411,8 @@ class Table(object):
         3   4331779       0.99
         4   6290521       0.99
         5   6713451       0.99
-        >>> db.tables.Track.head(1)
+        
+        db.tables.Track.head(1)
            TrackId                                     Name  AlbumId  MediaTypeId  \
         0        1  For Those About To Rock (We Salute You)        1            1
 
@@ -429,7 +438,7 @@ class Table(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> len(db.tables.Track.all())
-            3503
+        3503
         >>> df = db.tables.Track.all()
         """
 
@@ -457,34 +466,34 @@ class Table(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.tables.Track.unique("GenreId")
-                GenreId
-            0         1
-            1         2
-            2         3
-            3         4
-            4         5
-            5         6
-            6         7
-            7         8
-            8         9
-            9        10
-            10       11
-            11       12
-            12       13
-            13       14
-            14       15
-            15       16
-            16       17
-            17       18
-            18       19
-            19       20
-            20       21
-            21       22
-            22       23
-            23       24
-            24       25
+            GenreId
+        0         1
+        1         2
+        2         3
+        3         4
+        4         5
+        5         6
+        6         7
+        7         8
+        8         9
+        9        10
+        10       11
+        11       12
+        12       13
+        13       14
+        14       15
+        15       16
+        16       17
+        17       18
+        18       19
+        19       20
+        20       21
+        21       22
+        22       23
+        23       24
+        24       25
         >>> len(db.tables.Track.unique("GenreId", "MediaTypeId"))
-            38
+        38
         """
         if len(args)==0:
             columns = "*"
@@ -511,9 +520,10 @@ class Table(object):
 
         Examples
         --------
-        >>> from db import DemoDB
-        >>> db = DemoDB()
-        >>> db.tables.Track.sample(10)
+        from db import DemoDB
+        db = DemoDB()
+        Not in doctest : can't predict sample        
+        db.tables.Track.sample(10)
            TrackId                                               Name  AlbumId  \
         0      274                                      Samba Makossa       25
         1     1971                                Girls, Girls, Girls      162
@@ -591,6 +601,9 @@ class TableSet(object):
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
+
+    def __len__(self):
+        return len(self.tables)
 
 class ColumnSet(object):
     """
@@ -723,16 +736,22 @@ class DB(object):
 
     Examples
     --------
-    >>> from db import DB
-    >>> db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com",
-                port=5432, dbname="muppets", dbtype="postgres")
-    >>> db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131",
-                port=5432, dbname="muppets_redshift", dbtype="redshift")
-    >>> db = DB(username="dev", hostname="localhost",
-                port=5432, dbname="devdb", dbtype="postgres")
-    >>> db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
-    >>> db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
-    >>> db = DB(dbname="AdventureWorks2012", dbtype="mssql", driver="{FreeTDS}")
+    db = DB(dbname="AdventureWorks2012", dbtype="mssql", driver="{FreeTDS}")
+        
+    from db import DB
+    try:
+        __import__('imp').find_module('psycopg2')
+        db = DB(username="kermit", password="ilikeflies", hostname="themuppets.com", port=5432, dbname="muppets", dbtype="postgres")
+        db = DB(username="dev", hostname="localhost", port=5432, dbname="devdb", dbtype="postgres")
+        db = DB(username="fozzybear", password="wakawakawaka", hostname="ec2.523.24.131", port=5432, dbname="muppets_redshift", dbtype="redshift")
+    except ImportError:
+        pass
+    try:
+        __import__('imp').find_module('pymysql')
+        db = DB(username="root", hostname="localhost", dbname="employees", dbtype="mysql")
+        db = DB(filename="/path/to/mydb.sqlite", dbtype="sqlite")
+    except ImportError:
+        pass
     """
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
@@ -849,9 +868,16 @@ class DB(object):
                                            database=self.dbname)
                 self.cur = self.con.cursor()
 
-        self.tables = TableSet([])
-        self.refresh_schema(exclude_system_tables)
+        self._tables = TableSet([])
+        self._exclude_system_tables = exclude_system_tables
         self.handlebars = pybars.Compiler()
+
+    @property
+    def tables(self):
+        """A lazy loaded reference to the table metadata for the DB."""
+        if len(self._tables) == 0:
+            self.refresh_schema(self._exclude_system_tables)
+        return self._tables
 
     def __str__(self):
         return "DB[{dbtype}][{hostname}]:{port} > {user}@{dbname}".format(
@@ -904,13 +930,17 @@ class DB(object):
         profile: str
             (optional) identifier/name for your database (i.e. "dw", "prod")
 
-        >>> db = DB(username="hank", password="foo",
-        >>>         hostname="prod.mardukas.com", dbname="bar")
-        >>> db.save_credentials(profile="production")
-        >>> db = DB(username="hank", password="foo",
-        >>>         hostname="staging.mardukas.com", dbname="bar")
-        >>> db.save_credentials(profile="staging")
-        >>> db = DB(profile="staging")
+        from db import DB
+        import pymysql
+        db = DB(username="hank", password="foo", hostname="prod.mardukas.com", dbname="bar", dbtype="mysql")
+        db.save_credentials(profile="production")
+        db = DB(username="hank", password="foo", hostname="staging.mardukas.com", dbname="bar", dbtype="mysql")
+        db.save_credentials(profile="staging")
+        db = DB(profile="staging")
+        
+        >>> from db import DemoDB
+        >>> db = DemoDB()
+        >>> db.save_credentials(profile='test')
         """
         if self.filename:
             db_filename = os.path.join(os.getcwd(), self.filename)
@@ -918,6 +948,8 @@ class DB(object):
             db_filename = None
 
         user = os.path.expanduser("~")
+        #if not os.path.exists(user,".db.py_"):
+        #    os.makedirs(user,".db.py_")
         dotfile = os.path.join(user, ".db.py_" + profile)
         creds = {
             "username": self.username,
@@ -952,12 +984,12 @@ class DB(object):
         >>> from db import DemoDB
         >>> db = DemoDB()
         >>> db.find_table("A*")
-            +--------+--------------------------+
-            | Table  | Columns                  |
-            +--------+--------------------------+
-            | Album  | AlbumId, Title, ArtistId |
-            | Artist | ArtistId, Name           |
-            +--------+--------------------------+
+        +--------+--------------------------+
+        | Table  | Columns                  |
+        +--------+--------------------------+
+        | Album  | AlbumId, Title, ArtistId |
+        | Artist | ArtistId, Name           |
+        +--------+--------------------------+
         >>> results = db.find_table("tmp*") # returns all tables prefixed w/ tmp
         >>> results = db.find_table("prod_*") # returns all tables prefixed w/ prod_
         >>> results = db.find_table("*Invoice*") # returns all tables containing trans
@@ -984,7 +1016,20 @@ class DB(object):
         ----------
         >>> from db import DemoDB
         >>> db = DemoDB()
-        >>> db.find_column("Name") # returns all columns named "Name"
+        >>> len(db.find_column("Name").columns)
+        5
+        >>> len(db.find_column("*Id").columns)
+        20
+        >>> len(db.find_column("*Address*").columns)
+        3
+        >>> len(db.find_column("*Address*", data_type="NVARCHAR(70)").columns)
+        3
+        >>> len(db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]).columns)
+        17
+            
+        -= Should sort in some way for all those doctests to be viable... 
+        -= if not, there's always a random issue where rows are not in the same order, making doctest fail.
+        db.find_column("Name") # returns all columns named "Name"
         +-----------+-------------+---------------+
         | Table     | Column Name | Type          |
         +-----------+-------------+---------------+
@@ -994,7 +1039,7 @@ class DB(object):
         | Playlist  |     Name    | NVARCHAR(120) |
         | Track     |     Name    | NVARCHAR(200) |
         +-----------+-------------+---------------+
-        >>> db.find_column("*Id") # returns all columns ending w/ Id
+        db.find_column("*Id") # returns all columns ending w/ Id
         +---------------+---------------+---------+
         | Table         |  Column Name  | Type    |
         +---------------+---------------+---------+
@@ -1007,19 +1052,19 @@ class DB(object):
         | Genre         |    GenreId    | INTEGER |
         | Invoice       |   InvoiceId   | INTEGER |
         | Invoice       |   CustomerId  | INTEGER |
-        | InvoiceLine   |   InvoiceId   | INTEGER |
         | InvoiceLine   |    TrackId    | INTEGER |
         | InvoiceLine   | InvoiceLineId | INTEGER |
+        | InvoiceLine   |   InvoiceId   | INTEGER |
         | MediaType     |  MediaTypeId  | INTEGER |
         | Playlist      |   PlaylistId  | INTEGER |
         | PlaylistTrack |    TrackId    | INTEGER |
         | PlaylistTrack |   PlaylistId  | INTEGER |
-        | Track         |  MediaTypeId  | INTEGER |
         | Track         |    TrackId    | INTEGER |
         | Track         |    AlbumId    | INTEGER |
+        | Track         |  MediaTypeId  | INTEGER |
         | Track         |    GenreId    | INTEGER |
         +---------------+---------------+---------+
-        >>> db.find_column("*Address*") # returns all columns containing Address
+        db.find_column("*Address*") # returns all columns containing Address
         +----------+----------------+--------------+
         | Table    |  Column Name   | Type         |
         +----------+----------------+--------------+
@@ -1027,8 +1072,36 @@ class DB(object):
         | Employee |    Address     | NVARCHAR(70) |
         | Invoice  | BillingAddress | NVARCHAR(70) |
         +----------+----------------+--------------+
-        >>> db.find_column("*Address*", data_type="NVARCHAR(70)") # returns all columns containing Address that are varchars
-        >>> db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) # returns all columns have an "e" and are NVARCHAR(70)S or INTEGERS
+        db.find_column("*Address*", data_type="NVARCHAR(70)") # returns all columns containing Address that are varchars
+        +----------+----------------+--------------+
+        | Table    |  Column Name   | Type         |
+        +----------+----------------+--------------+
+        | Customer |    Address     | NVARCHAR(70) |
+        | Employee |    Address     | NVARCHAR(70) |
+        | Invoice  | BillingAddress | NVARCHAR(70) |
+        +----------+----------------+--------------+                
+        db.find_column("*e*", data_type=["NVARCHAR(70)", "INTEGER"]) # returns all columns have an "e" and are NVARCHAR(70)S or INTEGERS
+        +-------------+----------------+--------------+
+        | Table       |  Column Name   | Type         |
+        +-------------+----------------+--------------+
+        | Customer    |    Address     | NVARCHAR(70) |
+        | Customer    |  SupportRepId  | INTEGER      |
+        | Customer    |   CustomerId   | INTEGER      |
+        | Employee    |   ReportsTo    | INTEGER      |
+        | Employee    |   EmployeeId   | INTEGER      |
+        | Employee    |    Address     | NVARCHAR(70) |
+        | Genre       |    GenreId     | INTEGER      |
+        | Invoice     |   InvoiceId    | INTEGER      |
+        | Invoice     |   CustomerId   | INTEGER      |
+        | Invoice     | BillingAddress | NVARCHAR(70) |
+        | InvoiceLine | InvoiceLineId  | INTEGER      |
+        | InvoiceLine |   InvoiceId    | INTEGER      |
+        | MediaType   |  MediaTypeId   | INTEGER      |
+        | Track       |  MediaTypeId   | INTEGER      |
+        | Track       |  Milliseconds  | INTEGER      |
+        | Track       |    GenreId     | INTEGER      |
+        | Track       |     Bytes      | INTEGER      |
+        +-------------+----------------+--------------+
         """
         if isinstance(data_type, str):
             data_type = [data_type]
@@ -1093,23 +1166,22 @@ class DB(object):
         Examples
         --------
         >>> from db import DemoDB
-        >>> db.query("select * from Track")
-           TrackId                                     Name  AlbumId  MediaTypeId  \
+        >>> db = DemoDB()
+        
+        db.query("select * from Track").head(2)
+           TrackId                                     Name  AlbumId  MediaTypeId  \\\r
         0        1  For Those About To Rock (We Salute You)        1            1
         1        2                        Balls to the Wall        2            2
-        2        3                          Fast As a Shark        3            2
-
-           GenreId                                           Composer  Milliseconds  \
-        0        1          Angus Young, Malcolm Young, Brian Johnson        343719
-        1        1                                               None        342562
-        2        1  F. Baltes, S. Kaufman, U. Dirkscneider & W. Ho...        230619
-
-              Bytes  UnitPrice
-        0  11170334       0.99
-        1   5510424       0.99
-        2   3990994       0.99
-        ...
-        >>> db.query("select * from Track", limit=10)
+        <BLANKLINE>
+           GenreId                                   Composer  Milliseconds     Bytes  \\\r
+        0        1  Angus Young, Malcolm Young, Brian Johnson        343719  11170334
+        1        1                                       None        342562   5510424
+        <BLANKLINE>
+           UnitPrice
+        0       0.99
+        1       0.99
+        
+        db.query("select * from Track", limit=10)
            TrackId                                     Name  AlbumId  MediaTypeId  \
         0        1  For Those About To Rock (We Salute You)        1            1
         1        2                        Balls to the Wall        2            2
@@ -1146,17 +1218,20 @@ class DB(object):
         8   6599424       0.99
         9   8611245       0.99
         >>> q = '''
-        SELECT
-          a.Title
-          , t.Name
-          , t.UnitPrice
-        FROM
-          Album a
-        INNER JOIN
-          Track t
-            on a.AlbumId = t.AlbumId;
-        '''
-        >>> db.query(q, limit=10)
+        ... SELECT
+        ...   a.Title,
+        ...   t.Name,
+        ...   t.UnitPrice
+        ... FROM
+        ...   Album a
+        ... INNER JOIN
+        ...   Track t
+        ...     on a.AlbumId = t.AlbumId;
+        ... '''
+        >>> len(db.query(q))
+        3503
+        
+        db.query(q, limit=10)
                                            Title  \
         0  For Those About To Rock We Salute You
         1                      Balls to the Wall
@@ -1180,39 +1255,46 @@ class DB(object):
         7                         Inject The Venom       0.99
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
+        
         >>> template = '''
-        SELECT
-            '{{ name }}' as table_name
-            , COUNT(*) as cnt
-        FROM
-            {{ name }}
-        GROUP BY
-            table_name
-        '''
+        ...    SELECT
+        ...    '{{ name }}' as table_name,
+        ...    COUNT(*) as cnt
+        ... FROM
+        ...     {{ name }}
+        ... GROUP BY
+        ...     table_name
+        ... '''
         >>> data = [
-            {"name": "Album"},
-            {"name": "Artist"},
-            {"name": "Track"}
-        ]
-        >>> db.query(q, data=data)
+        ...    {"name": "Album"},
+        ...    {"name": "Artist"},
+        ...    {"name": "Track"}
+        ... ]
+        >>> 
+        
+        db.query(q, data=data)
           table_name   cnt
         0      Album   347
         1     Artist   275
         2      Track  3503
+
         >>> q = '''
-        SELECT
-        {{#cols}}
-            {{#if @last}}
-                {{ . }}
-            {{else}}
-                {{ . }} ,
-            {{/if}}
-        {{/cols}}
-        FROM
-            Album;
-        '''
+        ... SELECT
+        ... {{#cols}}
+        ...    {{#if @last}}
+        ...        {{ . }}
+        ...    {{else}}
+        ...        {{ . }} ,
+        ...    {{/if}}
+        ... {{/cols}}
+        ... FROM
+        ...    Album;
+        ... '''
         >>> data = {"cols": ["AlbumId", "Title", "ArtistId"]}
-        >>> db.query(q, data=data, union=False)
+        >>> len(db.query(q, data=data, union=False))
+        347
+        
+        db.query(q, data=data, union=False)
            AlbumId                                  Title  ArtistId
         0        1  For Those About To Rock We Salute You         1
         1        2                      Balls to the Wall         2
@@ -1223,9 +1305,10 @@ class DB(object):
     """
         if data:
             q = self._apply_handlebars(q, data, union)
-        if limit==False:
-            pass
-        else:
+        #if limit==None:
+        #    pass
+        #else:
+        if limit:
             q = self._assign_limit(q, limit)
         return pd.io.sql.read_sql(q, self.con)
 
@@ -1249,21 +1332,26 @@ class DB(object):
         Examples
         --------
         >>> from db import DemoDB
+        >>> db = DemoDB()
         >>> q = '''
-        SELECT
-          a.Title
-          , t.Name
-          , t.UnitPrice
-        FROM
-          Album a
-        INNER JOIN
-          Track t
-            on a.AlbumId = t.AlbumId;
-        '''
-        >>> with open("myscript.sql", "w") as f:
+        ... SELECT
+        ...   a.Title,
+        ...   t.Name,
+        ...   t.UnitPrice
+        ... FROM
+        ...   Album a
+        ... INNER JOIN
+        ...   Track t
+        ...     on a.AlbumId = t.AlbumId;
+        ... '''
+        >>> with open("db/tests/myscript.sql", "w") as f:
         ...    f.write(q)
-        ...
-        >>> db.query_from_file(q, limit=10)
+        109
+        >>> len(db.query_from_file("db/tests/myscript.sql", limit=10))
+        10
+               
+        
+        db.query_from_file("db/tests/myscript.sql", limit=10)
                                            Title  \
         0  For Those About To Rock We Salute You
         1                      Balls to the Wall
@@ -1288,13 +1376,10 @@ class DB(object):
         8                               Snowballed       0.99
         9                               Evil Walks       0.99
         """
-
         with open(filename) as fp:
             q = fp.read()
-            if data:
-                q = self._apply_handlebars(q, data, union)
 
-        return self.query(q, limit)
+        return self.query(q, data=data, union=union, limit=limit)
 
     def _create_sqlite_metatable(self):
         """
@@ -1347,16 +1432,14 @@ class DB(object):
         else:
             q = self._query_templates['system']['schema_with_system']
 
-        tables = set()
         self.cur.execute(q)
-        cols = []
         tables = {}
         for (table_name, column_name, data_type)in self.cur:
             if table_name not in tables:
                 tables[table_name] = []
             tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type, self.keys_per_column))
 
-        self.tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
+        self._tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
         sys.stderr.write("done!\n")
 
     def _try_command(self, cmd):
@@ -1516,8 +1599,9 @@ def list_profiles():
 
     Examples
     --------
-    >>> from db import list_profiles
-    >>> list_profiles()
+    No doctest, covered by unittest
+    
+    list_profiles()
     {'demo': {u'dbname': None,
       u'dbtype': u'sqlite',
       u'filename': u'/Users/glamp/repos/yhat/opensource/db.py/db/data/chinook.sqlite',
@@ -1537,15 +1621,16 @@ def list_profiles():
     user = os.path.expanduser("~")
     for f in os.listdir(user):
         if f.startswith(".db.py_"):
-            profile = os.path.join(user, f)
-            profile = json.loads(base64.decodestring(open(profile).read()))
+            profilePath = os.path.join(user, f)
+            profile = json.loads(base64.decodestring(open(profilePath,'rb').read()).decode('utf-8'))
             profiles[f[7:]] = profile
     return profiles
 
 
 def remove_profile(name, s3=False):
     """
-    Removes a profile from your config
+    Removes a profile from your config   
+    
     """
     user = os.path.expanduser("~")
     if s3==True:
