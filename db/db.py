@@ -1347,9 +1347,7 @@ class DB(object):
         else:
             q = self._query_templates['system']['schema_with_system']
 
-        tables = set()
         self.cur.execute(q)
-        cols = []
         tables = {}
         for (table_name, column_name, data_type)in self.cur:
             if table_name not in tables:
