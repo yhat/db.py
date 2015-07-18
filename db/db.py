@@ -256,6 +256,9 @@ class Column(object):
         q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
+    def to_dict(self):
+        return {'table': self.table, 'name': self.name, 'type': self.type}
+
 class Table(object):
     """
     A Table is an in-memory reference to a table in a database. You can use it to get more info
