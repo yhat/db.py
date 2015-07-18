@@ -898,7 +898,7 @@ class DB(object):
         profile: str
             (optional) identifier/name for your database (i.e. "dw", "prod")
         """
-        f = self._profile_path(profile)
+        f = _profile_path(DBPY_PROFILE_ID, profile)
         if os.path.exists(f):
             raw_creds = open(f, 'rb').read()
             raw_creds = base64.decodestring(raw_creds).decode('utf-8')
@@ -1594,6 +1594,7 @@ def remove_profile(name, s3=False):
     except Exception as e:
         raise Exception("Could not remove profile {0}! Excpetion: {1}".format(name, e))
 
+
 def dump_to_json(file_path, data):
     with open(file_path, 'wb') as f:
         json_data = json.dumps(data)
@@ -1602,10 +1603,12 @@ def dump_to_json(file_path, data):
         except:
             f.write(base64.encodestring(bytes(json_data, 'utf-8')))
 
+
 def _profile_path(profile_id, profile):
     """Create full path to given provide for the current user."""
     user = os.path.expanduser("~")
     return os.path.join(user, profile_id + profile)
+
 
 def DemoDB(keys_per_column=None):
     """
