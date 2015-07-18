@@ -880,6 +880,12 @@ class DB(object):
         del self.cur
         del self.con
 
+    @staticmethod
+    def _profile_path(profile):
+        """Create full path to given provide for the current user."""
+        user = os.path.expanduser("~")
+        return os.path.join(user, ".db.py_" + profile)
+
     def load_credentials(self, profile="default"):
         """
         Loads crentials for a given profile. Profiles are stored in
@@ -892,8 +898,7 @@ class DB(object):
         profile: str
             (optional) identifier/name for your database (i.e. "dw", "prod")
         """
-        user = os.path.expanduser("~")
-        f = os.path.join(user, ".db.py_" + profile)
+        f = self._profile_path(profile)
         if os.path.exists(f):
             raw_creds = open(f, 'rb').read()
             raw_creds = base64.decodestring(raw_creds).decode('utf-8')
@@ -928,15 +933,13 @@ class DB(object):
         >>> db.save_credentials(profile="staging")
         >>> db = DB(profile="staging")
         """
-        user = os.path.expanduser("~")
-        dotfile = os.path.join(user, ".db.py_" + profile)
+        f = self._profile_path(profile)
+        dump_to_json(f, self.credentials)
 
-        with open(dotfile, 'wb') as f:
-            data = json.dumps(self.credentials)
-            try:
-                f.write(base64.encodestring(data))
-            except:
-                f.write(base64.encodestring(bytes(data, 'utf-8')))
+    def save_metadata(self, profile="default"):
+        """Save the database credentials, plus the database properties to your db.py profile."""
+        f = self._profile_path(profile)
+        dump_to_json(f, self.to_dict())
 
     @property
     def credentials(self):
@@ -1466,6 +1469,7 @@ class DB(object):
         sys.stderr.write("Transfering {0} to s3 in chunks".format(name))
         len_df = len(df)
         chunks = range(0, len_df, chunk_size)
+
         def upload_chunk(i):
             conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
             chunk = df[i:(i+chunk_size)]
@@ -1535,6 +1539,10 @@ class DB(object):
         db_dict.update(self.tables.to_dict())
         return db_dict
 
+    def from_dict(self):
+        """Nested loading of database metadata."""
+        pass
+
 def list_profiles():
     """
     Lists all of the database profiles available
@@ -1586,6 +1594,13 @@ def remove_profile(name, s3=False):
     except Exception as e:
         raise Exception("Could not remove profile {0}! Excpetion: {1}".format(name, e))
 
+def dump_to_json(file_path, data):
+    with open(file_path, 'wb') as f:
+        json_data = json.dumps(data)
+        try:
+            f.write(base64.encodestring(json_data))
+        except:
+            f.write(base64.encodestring(bytes(json_data, 'utf-8')))
 
 def DemoDB(keys_per_column=None):
     """
