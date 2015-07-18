@@ -158,7 +158,7 @@ class Column(object):
         Name: City, dtype: object
         """
         q = self._query_templates['column']['head'].format(column=self.name, table=self.table, n=n)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
 
     def all(self):
         """
@@ -425,7 +425,7 @@ class Table(object):
         0       0.99
         """
         q = self._query_templates['table']['head'].format(table=self.name, n=n)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def all(self):
         """
