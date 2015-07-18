@@ -73,12 +73,17 @@ except ImportError:
     HAS_PYMSSQL = False
 
 
+DBPY_PROFILE_ID = ".db.py_"
+S3_PROFILE_ID = ".db.py_s3_"
+
+
 class Column(object):
     """
     A Columns is an in-memory reference to a column in a particular table. You
     can use it to do some basic DB exploration and you can also use it to
     execute simple queries.
     """
+
     def __init__(self, con, query_templates, table, name, dtype, keys_per_column):
         self._con = con
         self._query_templates = query_templates
@@ -110,7 +115,7 @@ class Column(object):
         for col in self.foreign_keys:
             keys.append("%s.%s" % (col.table, col.name))
         if self.keys_per_column is not None and len(keys) > self.keys_per_column:
-            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys)-self.keys_per_column)]
+            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys) - self.keys_per_column)]
         return ", ".join(keys)
 
     def _str_ref_keys(self):
@@ -118,7 +123,7 @@ class Column(object):
         for col in self.ref_keys:
             keys.append("%s.%s" % (col.table, col.name))
         if self.keys_per_column is not None and len(keys) > self.keys_per_column:
-            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys)-self.keys_per_column)]
+            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys) - self.keys_per_column)]
         return ", ".join(keys)
 
     def head(self, n=6):
@@ -260,11 +265,13 @@ class Column(object):
         """Serialize representation of the column for local caching."""
         return {'table': self.table, 'name': self.name, 'type': self.type}
 
+
 class Table(object):
     """
     A Table is an in-memory reference to a table in a database. You can use it to get more info
     about the columns, schema, etc. of a table and you can also use it to execute queries.
     """
+
     def __init__(self, con, query_templates, name, cols, keys_per_column):
         self.name = name
         self._con = con
@@ -314,8 +321,8 @@ class Table(object):
     def __repr__(self):
         tbl = str(self._tablify())
         r = tbl.split('\n')[0]
-        brk = "+" + "-"*(len(r)-2) + "+"
-        title = "|" + self.name.center(len(r)-2) + "|"
+        brk = "+" + "-" * (len(r) - 2) + "+"
+        title = "|" + self.name.center(len(r) - 2) + "|"
         return brk + "\n" + title + "\n" + tbl
 
     def __str__(self):
@@ -490,7 +497,7 @@ class Table(object):
         >>> len(db.tables.Track.unique("GenreId", "MediaTypeId"))
             38
         """
-        if len(args)==0:
+        if len(args) == 0:
             columns = "*"
         else:
             columns = ", ".join(args)
@@ -567,10 +574,12 @@ class Table(object):
         return {'name': self.name, 'columns': [col.to_dict() for col in self._columns],
                 'foreign_keys': self.foreign_keys.to_dict(), 'ref_keys': self.ref_keys.to_dict()}
 
+
 class TableSet(object):
     """
     Set of Tables. Used for displaying search results in terminal/ipython notebook.
     """
+
     def __init__(self, tables):
         for tbl in tables:
             setattr(self, tbl.name, tbl)
@@ -588,7 +597,7 @@ class TableSet(object):
             column_names = ", ".join(column_names)
             pretty_column_names = ""
             for i in range(0, len(column_names), 80):
-                pretty_column_names += column_names[i:(i+80)] + "\n"
+                pretty_column_names += column_names[i:(i + 80)] + "\n"
             pretty_column_names = pretty_column_names.strip()
             tbl.add_row([table.name, pretty_column_names])
         return tbl
@@ -604,11 +613,13 @@ class TableSet(object):
         """Serialize representation of the tableset for local caching."""
         return {'tables': [table.to_dict() for table in self.tables]}
 
+
 class ColumnSet(object):
     """
     Set of Columns. Used for displaying search results in terminal/ipython
     notebook.
     """
+
     def __init__(self, columns):
         self.columns = columns
 
@@ -635,10 +646,12 @@ class ColumnSet(object):
         """Serialize representation of the tableset for local caching."""
         return {'columns': [col.to_dict() for col in self.columns]}
 
+
 class S3(object):
     """
     Simple object for storing AWS credentials
     """
+
     def __init__(self, access_key, secret_key, profile=None):
 
         if profile:
@@ -656,18 +669,12 @@ class S3(object):
         profile: str
             name for your profile (i.e. "dev", "prod")
         """
-        home = os.path.expanduser("~")
-        filename = os.path.join(home, ".db.py_s3_" + profile)
+        filename = _profile_path(S3_PROFILE_ID, profile)
         creds = {
             "access_key": self.access_key,
             "secret_key": self.secret_key
         }
-        with open(filename, 'wb') as f:
-            data = json.dumps(creds)
-            try:
-                f.write(base64.encodestring(data))
-            except:
-                f.write(base64.encodestring(bytes(data, 'utf-8')))
+        dump_to_json(filename, creds)
 
     def load_credentials(self, profile):
         """
@@ -681,8 +688,7 @@ class S3(object):
         profile: str
             identifier/name for your database (i.e. "dev", "prod")
         """
-        user = os.path.expanduser("~")
-        f = os.path.join(user, ".db.py_s3_" + profile)
+        f = _profile_path(S3_PROFILE_ID, profile)
         if os.path.exists(f):
             creds = json.loads(base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
             if 'access_key' not in creds:
@@ -880,12 +886,6 @@ class DB(object):
         del self.cur
         del self.con
 
-    @staticmethod
-    def _profile_path(profile):
-        """Create full path to given provide for the current user."""
-        user = os.path.expanduser("~")
-        return os.path.join(user, ".db.py_" + profile)
-
     def load_credentials(self, profile="default"):
         """
         Loads crentials for a given profile. Profiles are stored in
@@ -933,12 +933,12 @@ class DB(object):
         >>> db.save_credentials(profile="staging")
         >>> db = DB(profile="staging")
         """
-        f = self._profile_path(profile)
+        f = _profile_path(DBPY_PROFILE_ID, profile)
         dump_to_json(f, self.credentials)
 
     def save_metadata(self, profile="default"):
         """Save the database credentials, plus the database properties to your db.py profile."""
-        f = self._profile_path(profile)
+        f = _profile_path(DBPY_PROFILE_ID, profile)
         dump_to_json(f, self.to_dict())
 
     @property
@@ -1581,10 +1581,10 @@ def remove_profile(name, s3=False):
     Removes a profile from your config
     """
     user = os.path.expanduser("~")
-    if s3==True:
-        f = os.path.join(user, ".db.py_s3_" + name)
+    if s3:
+        f = os.path.join(user, S3_PROFILE_ID + name)
     else:
-        f = os.path.join(user, ".db.py_" + name)
+        f = os.path.join(user, DBPY_PROFILE_ID + name)
     try:
         try:
             open(f)
@@ -1601,6 +1601,11 @@ def dump_to_json(file_path, data):
             f.write(base64.encodestring(json_data))
         except:
             f.write(base64.encodestring(bytes(json_data, 'utf-8')))
+
+def _profile_path(profile_id, profile):
+    """Create full path to given provide for the current user."""
+    user = os.path.expanduser("~")
+    return os.path.join(user, profile_id + profile)
 
 def DemoDB(keys_per_column=None):
     """
