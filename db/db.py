@@ -928,14 +928,25 @@ class DB(object):
         >>> db.save_credentials(profile="staging")
         >>> db = DB(profile="staging")
         """
+        user = os.path.expanduser("~")
+        dotfile = os.path.join(user, ".db.py_" + profile)
+
+        with open(dotfile, 'wb') as f:
+            data = json.dumps(self.credentials)
+            try:
+                f.write(base64.encodestring(data))
+            except:
+                f.write(base64.encodestring(bytes(data, 'utf-8')))
+
+    @property
+    def credentials(self):
+        """Dict representation of all credentials for the database."""
         if self.filename:
             db_filename = os.path.join(os.getcwd(), self.filename)
         else:
             db_filename = None
 
-        user = os.path.expanduser("~")
-        dotfile = os.path.join(user, ".db.py_" + profile)
-        creds = {
+        return {
             "username": self.username,
             "password": self.password,
             "hostname": self.hostname,
@@ -947,12 +958,6 @@ class DB(object):
             "limit": self.limit,
             "keys_per_column": self.keys_per_column,
         }
-        with open(dotfile, 'wb') as f:
-            data = json.dumps(creds)
-            try:
-                f.write(base64.encodestring(data))
-            except:
-                f.write(base64.encodestring(bytes(data, 'utf-8')))
 
     def find_table(self, search):
         """
@@ -1523,6 +1528,12 @@ class DB(object):
         if not s3_bucket:
             conn.delete_bucket(bucket_name)
         sys.stderr.write("done!")
+
+    def to_dict(self):
+        """Dict representation of the database as credentials plus tables dict representation."""
+        db_dict = self.credentials
+        db_dict.update(self.tables.to_dict())
+        return db_dict
 
 def list_profiles():
     """
