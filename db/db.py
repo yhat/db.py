@@ -257,6 +257,7 @@ class Column(object):
         return pd.io.sql.read_sql(q, self._con)[self.name]
 
     def to_dict(self):
+        """Serialize representation of the column for local caching."""
         return {'table': self.table, 'name': self.name, 'type': self.type}
 
 class Table(object):
@@ -561,6 +562,10 @@ class Table(object):
         """Return total of rows from table."""
         return len(self.all())
 
+    def to_dict(self):
+        """Serialize representation of the table for local caching."""
+        return {'name': self.name, 'columns': [col.to_dict() for col in self._columns],
+                'foreign_keys': self.foreign_keys.to_dict(), 'ref_keys': self.ref_keys.to_dict()}
 
 class TableSet(object):
     """
@@ -595,6 +600,10 @@ class TableSet(object):
     def _repr_html_(self):
         return self._tablify().get_html_string()
 
+    def to_dict(self):
+        """Serialize representation of the tableset for local caching."""
+        return {'tables': [table.to_dict() for table in self.tables]}
+
 class ColumnSet(object):
     """
     Set of Columns. Used for displaying search results in terminal/ipython
@@ -621,6 +630,10 @@ class ColumnSet(object):
 
     def _repr_html_(self):
         return self._tablify().get_html_string()
+
+    def to_dict(self):
+        """Serialize representation of the tableset for local caching."""
+        return {'columns': [col.to_dict() for col in self.columns]}
 
 class S3(object):
     """
