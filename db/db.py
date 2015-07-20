@@ -185,7 +185,7 @@ class Column(object):
         59
         """
         q = self._query_templates['column']['all'].format(column=self.name, table=self.table)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
 
     def unique(self):
         """
@@ -216,7 +216,7 @@ class Column(object):
         59
         """
         q = self._query_templates['column']['unique'].format(column=self.name, table=self.table)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
 
     def sample(self, n=10):
         """
@@ -257,7 +257,7 @@ class Column(object):
         10
         """
         q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
 
     def to_dict(self):
         """Serialize representation of the column for local caching."""
@@ -371,7 +371,7 @@ class Table(object):
         >>> df = db.tables.Track.select("Name", "Composer")
         """
         q = self._query_templates['table']['select'].format(columns=", ".join(args), table=self.name)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def head(self, n=6):
         """
@@ -454,7 +454,7 @@ class Table(object):
         """
 
         q = self._query_templates['table']['all'].format(table=self.name)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def unique(self, *args):
         """
@@ -511,7 +511,7 @@ class Table(object):
         else:
             columns = ", ".join(args)
         q = self._query_templates['table']['unique'].format(columns=columns, table=self.name)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def sample(self, n=10):
         """
@@ -1642,10 +1642,6 @@ class DB(object):
         db_dict = self.credentials
         db_dict.update(self.tables.to_dict())
         return db_dict
-
-    def from_dict(self):
-        """Nested loading of database metadata."""
-        pass
 
 
 def load_from_json(file_path):
