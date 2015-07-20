@@ -1638,6 +1638,14 @@ class DB(object):
         """Nested loading of database metadata."""
         pass
 
+
+def load_from_json(file_path):
+    """Load the stored data from json, and return as a dict."""
+    if os.path.exists(file_path):
+        raw_data = open(file_path, 'rb').read()
+        return json.loads(base64.decodestring(raw_data).decode('utf-8'))
+
+
 def list_profiles():
     """
     Lists all of the database profiles available
@@ -1666,8 +1674,7 @@ def list_profiles():
     user = os.path.expanduser("~")
     for f in os.listdir(user):
         if f.startswith(".db.py_"):
-            profilePath = os.path.join(user, f)
-            profile = json.loads(base64.decodestring(open(profilePath,'rb').read()).decode('utf-8'))
+            profile = load_from_json(f)
             profiles[f[7:]] = profile
     return profiles
 
@@ -1699,13 +1706,6 @@ def dump_to_json(file_path, data):
             f.write(base64.encodestring(json_data))
         except:
             f.write(base64.encodestring(bytes(json_data, 'utf-8')))
-
-
-def load_from_json(file_path):
-    if os.path.exists(file_path):
-        raw_creds = open(file_path, 'rb').read()
-        raw_creds = base64.decodestring(raw_creds).decode('utf-8')
-        return json.loads(raw_creds)
 
 
 def _profile_path(profile_id, profile):
