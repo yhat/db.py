@@ -1674,7 +1674,12 @@ def list_profiles():
     user = os.path.expanduser("~")
     for f in os.listdir(user):
         if f.startswith(".db.py_"):
-            profile = load_from_json(f)
+            profile = load_from_json(os.path.join(user, f))
+            tables = profile.pop('tables', None)
+            if tables:
+                profile['metadata'] = True
+            else:
+                profile['metadata'] = False
             profiles[f[7:]] = profile
     return profiles
 
