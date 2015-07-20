@@ -609,25 +609,39 @@ class TableSet(object):
     """
 
     def __init__(self, tables):
+        self.pretty_tbl_cols = ["Table", "Columns"]
+        self.use_schema = False
+
         for tbl in tables:
             setattr(self, tbl.name, tbl)
+            if tbl.schema and not self.use_schema:
+                self.use_schema = True
+                self.pretty_tbl_cols.insert(0, "Schema")
+
         self.tables = tables
 
     def __getitem__(self, i):
         return self.tables[i]
 
     def _tablify(self):
-        tbl = PrettyTable(["Table", "Columns"])
-        tbl.align["Table"] = "l"
-        tbl.align["Columns"] = "l"
+        tbl = PrettyTable(self.pretty_tbl_cols)
+
+        for col in self.pretty_tbl_cols:
+            tbl.align[col] = "l"
+
         for table in self.tables:
             column_names = [col.name for col in table._columns]
             column_names = ", ".join(column_names)
             pretty_column_names = ""
+
             for i in range(0, len(column_names), 80):
                 pretty_column_names += column_names[i:(i + 80)] + "\n"
             pretty_column_names = pretty_column_names.strip()
-            tbl.add_row([table.name, pretty_column_names])
+            row_data = [table.name, pretty_column_names]
+            if self.use_schema:
+                row_data.insert(0, table.schema)
+            tbl.add_row(row_data)
+
         return tbl
 
     def __repr__(self):
@@ -653,17 +667,28 @@ class ColumnSet(object):
 
     def __init__(self, columns):
         self.columns = columns
+        self.pretty_tbl_cols = ["Table", "Column Name", "Type"]
+        self.use_schema = False
+
+        for col in columns:
+            if col.schema and not self.use_schema:
+                self.use_schema = True
+                self.pretty_tbl_cols.insert(0, "Schema")
 
     def __getitem__(self, i):
         return self.columns[i]
 
     def _tablify(self):
-        tbl = PrettyTable(["Table", "Column Name", "Type"])
-        tbl.align["Table"] = "l"
-        tbl.align["Column"] = "l"
-        tbl.align["Type"] = "l"
+        tbl = PrettyTable(self.pretty_tbl_cols)
+
+        for col in self.pretty_tbl_cols:
+            tbl.align[col] = "l"
+
         for col in self.columns:
-            tbl.add_row([col.table, col.name, col.type])
+            row_data = [col.table, col.name, col.type]
+            if self.use_schema:
+                row_data.insert(0, col.schema)
+            tbl.add_row(row_data)
         return tbl
 
     def __repr__(self):
@@ -1471,37 +1496,23 @@ class DB(object):
         columns.
         """
 
-        if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates['system']:
-            schemas_str = ','.join([repr(schema) for schema in self.schemas])
-            q = self._query_templates['system']['schema_specified'] % schemas_str
-        elif exclude_system_tables==True:
-            q = self._query_templates['system']['schema_no_system']
-        else:
-            q = self._query_templates['system']['schema_with_system']
+        col_meta, table_meta = self._get_db_metadata(exclude_system_tables, use_cache)
+        tables = self._gen_tables_from_col_tuples(col_meta)
 
-        tables = {}
-
-        # pull out column metadata for all tables as list of tuples if told to use cached metadata
-        if use_cache and self._metadata_cache:
-            sys.stderr.write("Loading cached metadata. Please wait...")
-            col_meta = []
-            for table in self._metadata_cache:
-                for col in table['columns']:
-                    col_meta.append((col['schema'], col['table'], col['name'], col['type']))
-        else:
-            sys.stderr.write("Refreshing schema. Please wait...")
-            self.cur.execute(q)
-            col_meta = self.cur
-
-        # generate our Columns, and attach to each table to the table name in dict
-        for (table_schema, table_name, column_name, data_type)in col_meta:
-            if table_name not in tables:
-                tables[table_name] = []
-            tables[table_name].append(Column(self.con, self._query_templates, table_schema,
-                                             table_name, column_name, data_type, self.keys_per_column))
+        # Three modes for refreshing schema
+        # 1. load directly from cache
+        # 2. use a single query for getting all key relationships
+        # 3. use the naive approach
+        if use_cache:
+            # generate our Tables, and load them into a TableSet
+            self._tables = TableSet([Table(self.con, self._query_templates, table_meta[t]['schema'], t, tables[t],
+                                           keys_per_column=self.keys_per_column,
+                                           foreign_keys=table_meta[t]['foreign_keys']['columns'],
+                                           ref_keys=table_meta[t]['ref_keys']['columns'])
+                                     for t in sorted(tables.keys())])
 
         # optimize the foreign/ref key query by doing it one time, database-wide, if query is available
-        if not use_cache and self._query_templates.get('system', {}).get('foreign_keys_for_db', None):
+        elif not use_cache and isinstance(self._query_templates.get('system', {}).get('foreign_keys_for_db', None), str):
 
             self.cur.execute(self._query_templates['system']['foreign_keys_for_db'])
             table_db_foreign_keys = defaultdict(list)
@@ -1520,10 +1531,54 @@ class DB(object):
                                            keys_per_column=self.keys_per_column,
                                            foreign_keys=table_db_foreign_keys[t], ref_keys=table_db_ref_keys[t])
                                      for t in sorted(tables.keys())])
-        else:
+        elif not use_cache:
             self._tables = TableSet([Table(self.con, self._query_templates, tables[t][0].schema, t, tables[t],
                                            keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
+
         sys.stderr.write("done!\n")
+
+    def _get_db_metadata(self, exclude_system_tables, use_cache):
+
+        # pull out column metadata for all tables as list of tuples if told to use cached metadata
+        if use_cache and self._metadata_cache:
+            sys.stderr.write("Loading cached metadata. Please wait...")
+            col_meta = []
+            table_meta = {}
+
+            for table in self._metadata_cache:
+
+                # table metadata
+                table_meta[table['name']] = {k: table[k] for k in ('schema', 'name', 'foreign_keys', 'ref_keys')}
+
+                # col metadata: format as list of tuples, to match how normal loading is performed
+                for col in table['columns']:
+                    col_meta.append((col['schema'], col['table'], col['name'], col['type']))
+        else:
+            sys.stderr.write("Refreshing schema. Please wait...")
+            if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in \
+                    self._query_templates['system']:
+                schemas_str = ','.join([repr(schema) for schema in self.schemas])
+                q = self._query_templates['system']['schema_specified'] % schemas_str
+            elif exclude_system_tables:
+                q = self._query_templates['system']['schema_no_system']
+            else:
+                q = self._query_templates['system']['schema_with_system']
+            self.cur.execute(q)
+            col_meta = self.cur
+
+        return col_meta, table_meta
+
+    def _gen_tables_from_col_tuples(self, cols):
+
+        tables = {}
+        # generate our Columns, and attach to each table to the table name in dict
+        for (table_schema, table_name, column_name, data_type) in cols:
+            if table_name not in tables:
+                tables[table_name] = []
+            tables[table_name].append(Column(self.con, self._query_templates, table_schema,
+                                             table_name, column_name, data_type, self.keys_per_column))
+
+        return tables
 
     def _try_command(self, cmd):
         try:
