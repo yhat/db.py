@@ -974,7 +974,7 @@ class DB(object):
         f = _profile_path(DBPY_PROFILE_ID, profile)
         if f:
             prof = load_from_json(f)
-            return prof['tables']
+            return prof.get('tables', None)
 
     def save_metadata(self, profile="default"):
         """Save the database credentials, plus the database properties to your db.py profile."""
@@ -1464,7 +1464,7 @@ class DB(object):
         tables = {}
 
         # pull out column metadata for all tables as list of tuples if told to use cached metadata
-        if use_cache:
+        if use_cache and self._metadata_cache:
             sys.stderr.write("Loading cached metadata. Please wait...")
             col_meta = []
             for table in self._metadata_cache:
