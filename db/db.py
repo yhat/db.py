@@ -796,14 +796,15 @@ class DB(object):
             else:
                 raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
+        self._use_cache = cache
         if dbtype not in ("sqlite", "mssql") and username is None:
             self.load_credentials(profile)
             if cache:
-                self.load_metadata(profile)
+                self._metadata_cache = self.load_metadata(profile)
         elif dbtype=="sqlite" and filename is None:
             self.load_credentials(profile)
             if cache:
-                self.load_metadata(profile)
+                self._metadata_cache = self.load_metadata(profile)
         else:
             self.username = username
             self.password = password
@@ -902,7 +903,7 @@ class DB(object):
     def tables(self):
         """A lazy loaded reference to the table metadata for the DB."""
         if len(self._tables) == 0:
-            self.refresh_schema(self._exclude_system_tables)
+            self.refresh_schema(self._exclude_system_tables, self._use_cache)
         return self._tables
 
     def __str__(self):
@@ -968,14 +969,12 @@ class DB(object):
         f = _profile_path(DBPY_PROFILE_ID, profile)
         dump_to_json(f, self.credentials)
 
-    def load_metadata(self, profile="default"):
+    @staticmethod
+    def load_metadata(profile="default"):
         f = _profile_path(DBPY_PROFILE_ID, profile)
         if f:
             prof = load_from_json(f)
-            tables = prof['tables']
-
-            for table in tables:
-                print table['name']
+            return prof['tables']
 
     def save_metadata(self, profile="default"):
         """Save the database credentials, plus the database properties to your db.py profile."""
@@ -1339,12 +1338,9 @@ class DB(object):
     """
         if data:
             q = self._apply_handlebars(q, data, union)
-        #if limit==None:
-        #    pass
-        #else:
         if limit:
             q = self._assign_limit(q, limit)
-        return pd.io.sql.read_sql(q, self.con)
+        return pd.read_sql(q, self.con)
 
     def query_from_file(self, filename, data=None, union=True, limit=None):
         """
@@ -1451,13 +1447,12 @@ class DB(object):
         self.con.commit()
         sys.stderr.write("finished!\n")
 
-    def refresh_schema(self, exclude_system_tables=True):
+    def refresh_schema(self, exclude_system_tables=True, use_cache=False):
         """
         Pulls your database's schema again and looks for any new tables and
         columns.
         """
 
-        sys.stderr.write("Refreshing schema. Please wait...")
         if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates['system']:
             schemas_str = ','.join([repr(schema) for schema in self.schemas])
             q = self._query_templates['system']['schema_specified'] % schemas_str
@@ -1466,13 +1461,27 @@ class DB(object):
         else:
             q = self._query_templates['system']['schema_with_system']
 
-        self.cur.execute(q)
         tables = {}
-        for (table_name, column_name, data_type)in self.cur:
+
+        # pull out column metadata for all tables as list of tuples if told to use cached metadata
+        if use_cache:
+            sys.stderr.write("Loading cached metadata. Please wait...")
+            col_meta = []
+            for table in self._metadata_cache:
+                for col in table['columns']:
+                    col_meta.append((col['table'], col['name'], col['type']))
+        else:
+            sys.stderr.write("Refreshing schema. Please wait...")
+            self.cur.execute(q)
+            col_meta = self.cur
+
+        # generate our Columns, and attach to each table to the table name in dict
+        for (table_name, column_name, data_type)in col_meta:
             if table_name not in tables:
                 tables[table_name] = []
             tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type, self.keys_per_column))
 
+        # generate our Tables, and load them into a TableSet
         self._tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
         sys.stderr.write("done!\n")
 
