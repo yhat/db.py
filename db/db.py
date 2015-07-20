@@ -759,7 +759,7 @@ class DB(object):
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
             profile="default", exclude_system_tables=True, limit=1000,
-            keys_per_column=None, driver=None):
+            keys_per_column=None, driver=None, cache=False):
 
         if port is None:
             if dbtype=="postgres":
@@ -777,10 +777,14 @@ class DB(object):
             else:
                 raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
-        if not dbtype in ("sqlite", "mssql") and username is None:
+        if dbtype not in ("sqlite", "mssql") and username is None:
             self.load_credentials(profile)
+            if cache:
+                self.load_metadata(profile)
         elif dbtype=="sqlite" and filename is None:
             self.load_credentials(profile)
+            if cache:
+                self.load_metadata(profile)
         else:
             self.username = username
             self.password = password
@@ -899,10 +903,8 @@ class DB(object):
             (optional) identifier/name for your database (i.e. "dw", "prod")
         """
         f = _profile_path(DBPY_PROFILE_ID, profile)
-        if os.path.exists(f):
-            raw_creds = open(f, 'rb').read()
-            raw_creds = base64.decodestring(raw_creds).decode('utf-8')
-            creds = json.loads(raw_creds)
+        if f:
+            creds = load_from_json(f)
             self.username = creds.get('username')
             self.password = creds.get('password')
             self.hostname = creds.get('hostname')
@@ -936,10 +938,20 @@ class DB(object):
         f = _profile_path(DBPY_PROFILE_ID, profile)
         dump_to_json(f, self.credentials)
 
+    def load_metadata(self, profile="default"):
+        f = _profile_path(DBPY_PROFILE_ID, profile)
+        if f:
+            prof = load_from_json(f)
+            tables = prof['tables']
+
+            for table in tables:
+                print table['name']
+
     def save_metadata(self, profile="default"):
         """Save the database credentials, plus the database properties to your db.py profile."""
-        f = _profile_path(DBPY_PROFILE_ID, profile)
-        dump_to_json(f, self.to_dict())
+        if len(self.tables) > 0:
+            f = _profile_path(DBPY_PROFILE_ID, profile)
+            dump_to_json(f, self.to_dict())
 
     @property
     def credentials(self):
@@ -1604,17 +1616,24 @@ def dump_to_json(file_path, data):
             f.write(base64.encodestring(bytes(json_data, 'utf-8')))
 
 
+def load_from_json(file_path):
+    if os.path.exists(file_path):
+        raw_creds = open(file_path, 'rb').read()
+        raw_creds = base64.decodestring(raw_creds).decode('utf-8')
+        return json.loads(raw_creds)
+
+
 def _profile_path(profile_id, profile):
     """Create full path to given provide for the current user."""
     user = os.path.expanduser("~")
     return os.path.join(user, profile_id + profile)
 
 
-def DemoDB(keys_per_column=None):
+def DemoDB(keys_per_column=None, **kwargs):
     """
     Provides an instance of DB that hooks up to the Chinook DB
     See http://chinookdatabase.codeplex.com/ for more info.
     """
     _ROOT = os.path.abspath(os.path.dirname(__file__))
     chinook = os.path.join(_ROOT, 'data', "chinook.sqlite")
-    return DB(filename=chinook, dbtype="sqlite", keys_per_column=keys_per_column)
+    return DB(filename=chinook, dbtype="sqlite", keys_per_column=keys_per_column, **kwargs)
