@@ -266,8 +266,6 @@ class Column(object):
         return {'schema': self.schema, 'table': self.table, 'name': self.name, 'type': self.type}
 
 
-from datetime import datetime
-
 class Table(object):
     """
     A Table is an in-memory reference to a table in a database. You can use it to get more info
@@ -291,14 +289,14 @@ class Table(object):
                 attr = self.name + "_" + col.name
             setattr(self, attr, col)
 
+        # ToDo: factor out common logic below
+        # load foreign keys if not provided
         if not isinstance(foreign_keys, list):
-            print(foreign_keys)
-            print(str(datetime.now()))
-            print('foreign keys for %s:%s' % (self.schema, self.name))
             self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name,
                                                                                                table_schema=self.schema))
-            foreign_keys=self._cur
+            foreign_keys = self._cur
 
+        # build columns from the foreign keys metadata we have
         for (column_name, foreign_table, foreign_column) in foreign_keys:
             col = getattr(self, column_name)
             foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type, self.keys_per_column)
@@ -306,13 +304,16 @@ class Table(object):
             col.foreign_keys.append(foreign_key)
             setattr(self, column_name, col)
 
+        # store the foreign keys as a special group of columns
         self.foreign_keys = ColumnSet(self.foreign_keys)
 
+        # load ref keys if not provided
         if not isinstance(ref_keys, list):
             self._cur.execute(self._query_templates['system']['ref_keys_for_table'].format(table=self.name,
                                                                                            table_schema=self.schema))
             ref_keys = self._cur
 
+        # build columns for the ref key metadata we have
         for (column_name, ref_table, ref_column) in ref_keys:
             col = getattr(self, column_name)
             ref_key = Column(con, queries_templates, ref_table, ref_column, col.type, self.keys_per_column)
@@ -320,6 +321,7 @@ class Table(object):
             col.ref_keys.append(ref_key)
             setattr(self, column_name, col)
 
+        # store ref keys as a special group of columns
         self.ref_keys = ColumnSet(self.ref_keys)
 
     def _tablify(self):
