@@ -11,6 +11,7 @@ import base64
 import re
 import os
 import sys
+from collections import defaultdict
 
 import pandas as pd
 from prettytable import PrettyTable
@@ -84,9 +85,10 @@ class Column(object):
     execute simple queries.
     """
 
-    def __init__(self, con, query_templates, table, name, dtype, keys_per_column):
+    def __init__(self, con, query_templates, schema, table, name, dtype, keys_per_column):
         self._con = con
         self._query_templates = query_templates
+        self.schema = schema
         self.table = table
         self.name = name
         self.type = dtype
@@ -261,8 +263,10 @@ class Column(object):
 
     def to_dict(self):
         """Serialize representation of the column for local caching."""
-        return {'table': self.table, 'name': self.name, 'type': self.type}
+        return {'schema': self.schema, 'table': self.table, 'name': self.name, 'type': self.type}
 
+
+from datetime import datetime
 
 class Table(object):
     """
@@ -270,7 +274,8 @@ class Table(object):
     about the columns, schema, etc. of a table and you can also use it to execute queries.
     """
 
-    def __init__(self, con, query_templates, name, cols, keys_per_column):
+    def __init__(self, con, query_templates, schema, name, cols, keys_per_column, foreign_keys=None, ref_keys=None):
+        self.schema = schema
         self.name = name
         self._con = con
         self._cur = con.cursor()
@@ -286,8 +291,15 @@ class Table(object):
                 attr = self.name + "_" + col.name
             setattr(self, attr, col)
 
-        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name))
-        for (column_name, foreign_table, foreign_column) in self._cur:
+        if not isinstance(foreign_keys, list):
+            print(foreign_keys)
+            print(str(datetime.now()))
+            print('foreign keys for %s:%s' % (self.schema, self.name))
+            self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name,
+                                                                                               table_schema=self.schema))
+            foreign_keys=self._cur
+
+        for (column_name, foreign_table, foreign_column) in foreign_keys:
             col = getattr(self, column_name)
             foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type, self.keys_per_column)
             self.foreign_keys.append(foreign_key)
@@ -296,8 +308,12 @@ class Table(object):
 
         self.foreign_keys = ColumnSet(self.foreign_keys)
 
-        self._cur.execute(self._query_templates['system']['ref_keys_for_table'].format(table=self.name))
-        for (column_name, ref_table, ref_column) in self._cur:
+        if not isinstance(ref_keys, list):
+            self._cur.execute(self._query_templates['system']['ref_keys_for_table'].format(table=self.name,
+                                                                                           table_schema=self.schema))
+            ref_keys = self._cur
+
+        for (column_name, ref_table, ref_column) in ref_keys:
             col = getattr(self, column_name)
             ref_key = Column(con, queries_templates, ref_table, ref_column, col.type, self.keys_per_column)
             self.ref_keys.append(ref_key)
@@ -572,7 +588,7 @@ class Table(object):
         9        404453  13186975       0.99
         """
         q = self._query_templates['table']['sample'].format(table=self.name, n=n)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     @property
     def count(self):
@@ -581,7 +597,7 @@ class Table(object):
 
     def to_dict(self):
         """Serialize representation of the table for local caching."""
-        return {'name': self.name, 'columns': [col.to_dict() for col in self._columns],
+        return {'schema': self.schema, 'name': self.name, 'columns': [col.to_dict() for col in self._columns],
                 'foreign_keys': self.foreign_keys.to_dict(), 'ref_keys': self.ref_keys.to_dict()}
 
 
@@ -1469,20 +1485,42 @@ class DB(object):
             col_meta = []
             for table in self._metadata_cache:
                 for col in table['columns']:
-                    col_meta.append((col['table'], col['name'], col['type']))
+                    col_meta.append((col['schema'], col['table'], col['name'], col['type']))
         else:
             sys.stderr.write("Refreshing schema. Please wait...")
             self.cur.execute(q)
             col_meta = self.cur
 
         # generate our Columns, and attach to each table to the table name in dict
-        for (table_name, column_name, data_type)in col_meta:
+        for (table_schema, table_name, column_name, data_type)in col_meta:
             if table_name not in tables:
                 tables[table_name] = []
-            tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type, self.keys_per_column))
+            tables[table_name].append(Column(self.con, self._query_templates, table_schema,
+                                             table_name, column_name, data_type, self.keys_per_column))
 
-        # generate our Tables, and load them into a TableSet
-        self._tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
+        # optimize the foreign/ref key query by doing it one time, database-wide, if query is available
+        if not use_cache and self._query_templates.get('system', {}).get('foreign_keys_for_db', None):
+
+            self.cur.execute(self._query_templates['system']['foreign_keys_for_db'])
+            table_db_foreign_keys = defaultdict(list)
+            for rel in self.cur:
+                # second value in relationship tuple is the table name
+                table_db_foreign_keys[rel[1]].append(rel)
+
+            self.cur.execute(self._query_templates['system']['ref_keys_for_db'])
+            table_db_ref_keys = defaultdict(list)
+            for rel in self.cur:
+                # second value in relationship tuple is the table name
+                table_db_ref_keys[rel[1]].append(rel)
+
+            # generate our Tables, and load them into a TableSet
+            self._tables = TableSet([Table(self.con, self._query_templates, tables[t][0].schema, t, tables[t],
+                                           keys_per_column=self.keys_per_column,
+                                           foreign_keys=table_db_foreign_keys[t], ref_keys=table_db_ref_keys[t])
+                                     for t in sorted(tables.keys())])
+        else:
+            self._tables = TableSet([Table(self.con, self._query_templates, tables[t][0].schema, t, tables[t],
+                                           keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
         sys.stderr.write("done!\n")
 
     def _try_command(self, cmd):
