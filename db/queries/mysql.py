@@ -14,8 +14,8 @@ queries = {
     },
     "system": {
         "schema_no_system": """
-                select
-                    table_name
+                select table_schema
+                    , table_name
                     , column_name
                     , data_type
                 from
@@ -24,16 +24,16 @@ queries = {
                     table_schema not in ('information_schema', 'performance_schema', 'mysql')
                 """,
         "schema_with_system": """
-                select
-                    table_name
+                select table_schema
+                    , table_name
                     , column_name
                     , data_type
                 from
                     information_schema.columns;
                 """,
         "schema_specified": """
-                select
-                    table_name
+                select table_schema
+                    , table_name
                     , column_name
                     , udt_name
                 from
@@ -41,19 +41,18 @@ queries = {
                 where table_schema in (%s);
                 """,
         "foreign_keys_for_table": """
-        select
-            column_name
+        select column_name
             , referenced_table_name
             , referenced_column_name
         from
             information_schema.key_column_usage
         where
             table_name = '{table}'
-            and referenced_column_name IS NOT NULL;
+            and referenced_column_name IS NOT NULL
+            and table_schema = '{table_schema}';
         """,
         "foreign_keys_for_column": """
-        select
-            column_name
+        select column_name
             , referenced_table_name
             , referenced_column_name
         from
@@ -61,18 +60,35 @@ queries = {
         where
             table_name = '{table}'
             and column_name = '{column}'
-            and referenced_column_name IS NOT NULL;
+            and referenced_column_name IS NOT NULL
+            and table_schema = '{table_schema}';
         """,
         "ref_keys_for_table": """
-            select
-                referenced_column_name
+            select referenced_column_name
                 , table_name
                 , column_name
             from
                 information_schema.key_column_usage
             where
                 referenced_table_name = '{table}'
-                and referenced_column_name IS NOT NULL;
+                and referenced_column_name IS NOT NULL
+                and table_schema = '{table_schema}';
+        """,
+        "foreign_keys_for_db": """
+            select column_name
+                , referenced_table_name
+                , referenced_column_name
+            FROM
+                information_schema.key_column_usage
+            WHERE referenced_column_name IS NOT NULL;
+        """,
+        "ref_keys_for_db": """
+            SELECT referenced_column_name,
+                   table_name,
+                   column_name
+            FROM
+                information_schema.key_column_usage
+            WHERE referenced_column_name IS NOT NULL;
         """
     }
 }

@@ -11,6 +11,7 @@ import base64
 import re
 import os
 import sys
+from collections import defaultdict
 
 import pandas as pd
 from prettytable import PrettyTable
@@ -73,15 +74,21 @@ except ImportError:
     HAS_PYMSSQL = False
 
 
+DBPY_PROFILE_ID = ".db.py_"
+S3_PROFILE_ID = ".db.py_s3_"
+
+
 class Column(object):
     """
     A Columns is an in-memory reference to a column in a particular table. You
     can use it to do some basic DB exploration and you can also use it to
     execute simple queries.
     """
-    def __init__(self, con, query_templates, table, name, dtype, keys_per_column):
+
+    def __init__(self, con, query_templates, schema, table, name, dtype, keys_per_column):
         self._con = con
         self._query_templates = query_templates
+        self.schema = schema
         self.table = table
         self.name = name
         self.type = dtype
@@ -110,7 +117,7 @@ class Column(object):
         for col in self.foreign_keys:
             keys.append("%s.%s" % (col.table, col.name))
         if self.keys_per_column is not None and len(keys) > self.keys_per_column:
-            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys)-self.keys_per_column)]
+            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys) - self.keys_per_column)]
         return ", ".join(keys)
 
     def _str_ref_keys(self):
@@ -118,7 +125,7 @@ class Column(object):
         for col in self.ref_keys:
             keys.append("%s.%s" % (col.table, col.name))
         if self.keys_per_column is not None and len(keys) > self.keys_per_column:
-            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys)-self.keys_per_column)]
+            keys = keys[0:self.keys_per_column] + ['(+ {0} more)'.format(len(keys) - self.keys_per_column)]
         return ", ".join(keys)
 
     def head(self, n=6):
@@ -153,7 +160,7 @@ class Column(object):
         Name: City, dtype: object
         """
         q = self._query_templates['column']['head'].format(column=self.name, table=self.table, n=n)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
 
     def all(self):
         """
@@ -180,7 +187,7 @@ class Column(object):
         59
         """
         q = self._query_templates['column']['all'].format(column=self.name, table=self.table)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
 
     def unique(self):
         """
@@ -211,7 +218,7 @@ class Column(object):
         59
         """
         q = self._query_templates['column']['unique'].format(column=self.name, table=self.table)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
 
     def sample(self, n=10):
         """
@@ -252,14 +259,21 @@ class Column(object):
         10
         """
         q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
-        return pd.io.sql.read_sql(q, self._con)[self.name]
+        return pd.read_sql(q, self._con)[self.name]
+
+    def to_dict(self):
+        """Serialize representation of the column for local caching."""
+        return {'schema': self.schema, 'table': self.table, 'name': self.name, 'type': self.type}
+
 
 class Table(object):
     """
     A Table is an in-memory reference to a table in a database. You can use it to get more info
     about the columns, schema, etc. of a table and you can also use it to execute queries.
     """
-    def __init__(self, con, query_templates, name, cols, keys_per_column):
+
+    def __init__(self, con, query_templates, schema, name, cols, keys_per_column, foreign_keys=None, ref_keys=None):
+        self.schema = schema
         self.name = name
         self._con = con
         self._cur = con.cursor()
@@ -275,24 +289,39 @@ class Table(object):
                 attr = self.name + "_" + col.name
             setattr(self, attr, col)
 
-        self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name))
-        for (column_name, foreign_table, foreign_column) in self._cur:
+        # ToDo: factor out common logic below
+        # load foreign keys if not provided
+        if not isinstance(foreign_keys, list):
+            self._cur.execute(self._query_templates['system']['foreign_keys_for_table'].format(table=self.name,
+                                                                                               table_schema=self.schema))
+            foreign_keys = self._cur
+
+        # build columns from the foreign keys metadata we have
+        for (column_name, foreign_table, foreign_column) in foreign_keys:
             col = getattr(self, column_name)
             foreign_key = Column(con, queries_templates, foreign_table, foreign_column, col.type, self.keys_per_column)
             self.foreign_keys.append(foreign_key)
             col.foreign_keys.append(foreign_key)
             setattr(self, column_name, col)
 
+        # store the foreign keys as a special group of columns
         self.foreign_keys = ColumnSet(self.foreign_keys)
 
-        self._cur.execute(self._query_templates['system']['ref_keys_for_table'].format(table=self.name))
-        for (column_name, ref_table, ref_column) in self._cur:
+        # load ref keys if not provided
+        if not isinstance(ref_keys, list):
+            self._cur.execute(self._query_templates['system']['ref_keys_for_table'].format(table=self.name,
+                                                                                           table_schema=self.schema))
+            ref_keys = self._cur
+
+        # build columns for the ref key metadata we have
+        for (column_name, ref_table, ref_column) in ref_keys:
             col = getattr(self, column_name)
             ref_key = Column(con, queries_templates, ref_table, ref_column, col.type, self.keys_per_column)
             self.ref_keys.append(ref_key)
             col.ref_keys.append(ref_key)
             setattr(self, column_name, col)
 
+        # store ref keys as a special group of columns
         self.ref_keys = ColumnSet(self.ref_keys)
 
     def _tablify(self):
@@ -308,8 +337,8 @@ class Table(object):
     def __repr__(self):
         tbl = str(self._tablify())
         r = tbl.split('\n')[0]
-        brk = "+" + "-"*(len(r)-2) + "+"
-        title = "|" + self.name.center(len(r)-2) + "|"
+        brk = "+" + "-" * (len(r) - 2) + "+"
+        title = "|" + self.name.center(len(r) - 2) + "|"
         return brk + "\n" + title + "\n" + tbl
 
     def __str__(self):
@@ -360,7 +389,7 @@ class Table(object):
         >>> df = db.tables.Track.select("Name", "Composer")
         """
         q = self._query_templates['table']['select'].format(columns=", ".join(args), table=self.name)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def head(self, n=6):
         """
@@ -423,7 +452,7 @@ class Table(object):
         0       0.99
         """
         q = self._query_templates['table']['head'].format(table=self.name, n=n)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def all(self):
         """
@@ -443,7 +472,7 @@ class Table(object):
         """
 
         q = self._query_templates['table']['all'].format(table=self.name)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def unique(self, *args):
         """
@@ -495,12 +524,12 @@ class Table(object):
         >>> len(db.tables.Track.unique("GenreId", "MediaTypeId"))
         38
         """
-        if len(args)==0:
+        if len(args) == 0:
             columns = "*"
         else:
             columns = ", ".join(args)
         q = self._query_templates['table']['unique'].format(columns=columns, table=self.name)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     def sample(self, n=10):
         """
@@ -561,38 +590,58 @@ class Table(object):
         9        404453  13186975       0.99
         """
         q = self._query_templates['table']['sample'].format(table=self.name, n=n)
-        return pd.io.sql.read_sql(q, self._con)
+        return pd.read_sql(q, self._con)
 
     @property
     def count(self):
         """Return total of rows from table."""
         return len(self.all())
 
+    def to_dict(self):
+        """Serialize representation of the table for local caching."""
+        return {'schema': self.schema, 'name': self.name, 'columns': [col.to_dict() for col in self._columns],
+                'foreign_keys': self.foreign_keys.to_dict(), 'ref_keys': self.ref_keys.to_dict()}
+
 
 class TableSet(object):
     """
     Set of Tables. Used for displaying search results in terminal/ipython notebook.
     """
+
     def __init__(self, tables):
+        self.pretty_tbl_cols = ["Table", "Columns"]
+        self.use_schema = False
+
         for tbl in tables:
             setattr(self, tbl.name, tbl)
+            if tbl.schema and not self.use_schema:
+                self.use_schema = True
+                self.pretty_tbl_cols.insert(0, "Schema")
+
         self.tables = tables
 
     def __getitem__(self, i):
         return self.tables[i]
 
     def _tablify(self):
-        tbl = PrettyTable(["Table", "Columns"])
-        tbl.align["Table"] = "l"
-        tbl.align["Columns"] = "l"
+        tbl = PrettyTable(self.pretty_tbl_cols)
+
+        for col in self.pretty_tbl_cols:
+            tbl.align[col] = "l"
+
         for table in self.tables:
             column_names = [col.name for col in table._columns]
             column_names = ", ".join(column_names)
             pretty_column_names = ""
+
             for i in range(0, len(column_names), 80):
-                pretty_column_names += column_names[i:(i+80)] + "\n"
+                pretty_column_names += column_names[i:(i + 80)] + "\n"
             pretty_column_names = pretty_column_names.strip()
-            tbl.add_row([table.name, pretty_column_names])
+            row_data = [table.name, pretty_column_names]
+            if self.use_schema:
+                row_data.insert(0, table.schema)
+            tbl.add_row(row_data)
+
         return tbl
 
     def __repr__(self):
@@ -605,24 +654,41 @@ class TableSet(object):
     def __len__(self):
         return len(self.tables)
 
+    def to_dict(self):
+        """Serialize representation of the tableset for local caching."""
+        return {'tables': [table.to_dict() for table in self.tables]}
+
+
 class ColumnSet(object):
     """
     Set of Columns. Used for displaying search results in terminal/ipython
     notebook.
     """
+
     def __init__(self, columns):
         self.columns = columns
+        self.pretty_tbl_cols = ["Table", "Column Name", "Type"]
+        self.use_schema = False
+
+        for col in columns:
+            if col.schema and not self.use_schema:
+                self.use_schema = True
+                self.pretty_tbl_cols.insert(0, "Schema")
 
     def __getitem__(self, i):
         return self.columns[i]
 
     def _tablify(self):
-        tbl = PrettyTable(["Table", "Column Name", "Type"])
-        tbl.align["Table"] = "l"
-        tbl.align["Column"] = "l"
-        tbl.align["Type"] = "l"
+        tbl = PrettyTable(self.pretty_tbl_cols)
+
+        for col in self.pretty_tbl_cols:
+            tbl.align[col] = "l"
+
         for col in self.columns:
-            tbl.add_row([col.table, col.name, col.type])
+            row_data = [col.table, col.name, col.type]
+            if self.use_schema:
+                row_data.insert(0, col.schema)
+            tbl.add_row(row_data)
         return tbl
 
     def __repr__(self):
@@ -632,10 +698,16 @@ class ColumnSet(object):
     def _repr_html_(self):
         return self._tablify().get_html_string()
 
+    def to_dict(self):
+        """Serialize representation of the tableset for local caching."""
+        return {'columns': [col.to_dict() for col in self.columns]}
+
+
 class S3(object):
     """
     Simple object for storing AWS credentials
     """
+
     def __init__(self, access_key, secret_key, profile=None):
 
         if profile:
@@ -653,18 +725,12 @@ class S3(object):
         profile: str
             name for your profile (i.e. "dev", "prod")
         """
-        home = os.path.expanduser("~")
-        filename = os.path.join(home, ".db.py_s3_" + profile)
+        filename = _profile_path(S3_PROFILE_ID, profile)
         creds = {
             "access_key": self.access_key,
             "secret_key": self.secret_key
         }
-        with open(filename, 'wb') as f:
-            data = json.dumps(creds)
-            try:
-                f.write(base64.encodestring(data))
-            except:
-                f.write(base64.encodestring(bytes(data, 'utf-8')))
+        dump_to_json(filename, creds)
 
     def load_credentials(self, profile):
         """
@@ -678,8 +744,7 @@ class S3(object):
         profile: str
             identifier/name for your database (i.e. "dev", "prod")
         """
-        user = os.path.expanduser("~")
-        f = os.path.join(user, ".db.py_s3_" + profile)
+        f = _profile_path(S3_PROFILE_ID, profile)
         if os.path.exists(f):
             creds = json.loads(base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
             if 'access_key' not in creds:
@@ -756,7 +821,7 @@ class DB(object):
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
             profile="default", exclude_system_tables=True, limit=1000,
-            keys_per_column=None, driver=None):
+            keys_per_column=None, driver=None, cache=False):
 
         if port is None:
             if dbtype=="postgres":
@@ -774,10 +839,15 @@ class DB(object):
             else:
                 raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
 
-        if not dbtype in ("sqlite", "mssql") and username is None:
+        self._use_cache = cache
+        if dbtype not in ("sqlite", "mssql") and username is None:
             self.load_credentials(profile)
+            if cache:
+                self._metadata_cache = self.load_metadata(profile)
         elif dbtype=="sqlite" and filename is None:
             self.load_credentials(profile)
+            if cache:
+                self._metadata_cache = self.load_metadata(profile)
         else:
             self.username = username
             self.password = password
@@ -876,7 +946,7 @@ class DB(object):
     def tables(self):
         """A lazy loaded reference to the table metadata for the DB."""
         if len(self._tables) == 0:
-            self.refresh_schema(self._exclude_system_tables)
+            self.refresh_schema(self._exclude_system_tables, self._use_cache)
         return self._tables
 
     def __str__(self):
@@ -902,12 +972,9 @@ class DB(object):
         profile: str
             (optional) identifier/name for your database (i.e. "dw", "prod")
         """
-        user = os.path.expanduser("~")
-        f = os.path.join(user, ".db.py_" + profile)
-        if os.path.exists(f):
-            raw_creds = open(f, 'rb').read()
-            raw_creds = base64.decodestring(raw_creds).decode('utf-8')
-            creds = json.loads(raw_creds)
+        f = _profile_path(DBPY_PROFILE_ID, profile)
+        if f:
+            creds = load_from_json(f)
             self.username = creds.get('username')
             self.password = creds.get('password')
             self.hostname = creds.get('hostname')
@@ -942,16 +1009,31 @@ class DB(object):
         >>> db = DemoDB()
         >>> db.save_credentials(profile='test')
         """
+        f = _profile_path(DBPY_PROFILE_ID, profile)
+        dump_to_json(f, self.credentials)
+
+    @staticmethod
+    def load_metadata(profile="default"):
+        f = _profile_path(DBPY_PROFILE_ID, profile)
+        if f:
+            prof = load_from_json(f)
+            return prof.get('tables', None)
+
+    def save_metadata(self, profile="default"):
+        """Save the database credentials, plus the database properties to your db.py profile."""
+        if len(self.tables) > 0:
+            f = _profile_path(DBPY_PROFILE_ID, profile)
+            dump_to_json(f, self.to_dict())
+
+    @property
+    def credentials(self):
+        """Dict representation of all credentials for the database."""
         if self.filename:
             db_filename = os.path.join(os.getcwd(), self.filename)
         else:
             db_filename = None
 
-        user = os.path.expanduser("~")
-        #if not os.path.exists(user,".db.py_"):
-        #    os.makedirs(user,".db.py_")
-        dotfile = os.path.join(user, ".db.py_" + profile)
-        creds = {
+        return {
             "username": self.username,
             "password": self.password,
             "hostname": self.hostname,
@@ -963,12 +1045,6 @@ class DB(object):
             "limit": self.limit,
             "keys_per_column": self.keys_per_column,
         }
-        with open(dotfile, 'wb') as f:
-            data = json.dumps(creds)
-            try:
-                f.write(base64.encodestring(data))
-            except:
-                f.write(base64.encodestring(bytes(data, 'utf-8')))
 
     def find_table(self, search):
         """
@@ -1305,12 +1381,9 @@ class DB(object):
     """
         if data:
             q = self._apply_handlebars(q, data, union)
-        #if limit==None:
-        #    pass
-        #else:
         if limit:
             q = self._assign_limit(q, limit)
-        return pd.io.sql.read_sql(q, self.con)
+        return pd.read_sql(q, self.con)
 
     def query_from_file(self, filename, data=None, union=True, limit=None):
         """
@@ -1417,30 +1490,95 @@ class DB(object):
         self.con.commit()
         sys.stderr.write("finished!\n")
 
-    def refresh_schema(self, exclude_system_tables=True):
+    def refresh_schema(self, exclude_system_tables=True, use_cache=False):
         """
         Pulls your database's schema again and looks for any new tables and
         columns.
         """
 
-        sys.stderr.write("Refreshing schema. Please wait...")
-        if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in self._query_templates['system']:
-            schemas_str = ','.join([repr(schema) for schema in self.schemas])
-            q = self._query_templates['system']['schema_specified'] % schemas_str
-        elif exclude_system_tables==True:
-            q = self._query_templates['system']['schema_no_system']
-        else:
-            q = self._query_templates['system']['schema_with_system']
+        col_meta, table_meta = self._get_db_metadata(exclude_system_tables, use_cache)
+        tables = self._gen_tables_from_col_tuples(col_meta)
 
-        self.cur.execute(q)
+        # Three modes for refreshing schema
+        # 1. load directly from cache
+        # 2. use a single query for getting all key relationships
+        # 3. use the naive approach
+        if use_cache:
+            # generate our Tables, and load them into a TableSet
+            self._tables = TableSet([Table(self.con, self._query_templates, table_meta[t]['schema'], t, tables[t],
+                                           keys_per_column=self.keys_per_column,
+                                           foreign_keys=table_meta[t]['foreign_keys']['columns'],
+                                           ref_keys=table_meta[t]['ref_keys']['columns'])
+                                     for t in sorted(tables.keys())])
+
+        # optimize the foreign/ref key query by doing it one time, database-wide, if query is available
+        elif not use_cache and isinstance(self._query_templates.get('system', {}).get('foreign_keys_for_db', None), str):
+
+            self.cur.execute(self._query_templates['system']['foreign_keys_for_db'])
+            table_db_foreign_keys = defaultdict(list)
+            for rel in self.cur:
+                # second value in relationship tuple is the table name
+                table_db_foreign_keys[rel[1]].append(rel)
+
+            self.cur.execute(self._query_templates['system']['ref_keys_for_db'])
+            table_db_ref_keys = defaultdict(list)
+            for rel in self.cur:
+                # second value in relationship tuple is the table name
+                table_db_ref_keys[rel[1]].append(rel)
+
+            # generate our Tables, and load them into a TableSet
+            self._tables = TableSet([Table(self.con, self._query_templates, tables[t][0].schema, t, tables[t],
+                                           keys_per_column=self.keys_per_column,
+                                           foreign_keys=table_db_foreign_keys[t], ref_keys=table_db_ref_keys[t])
+                                     for t in sorted(tables.keys())])
+        elif not use_cache:
+            self._tables = TableSet([Table(self.con, self._query_templates, tables[t][0].schema, t, tables[t],
+                                           keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
+
+        sys.stderr.write("done!\n")
+
+    def _get_db_metadata(self, exclude_system_tables, use_cache):
+
+        # pull out column metadata for all tables as list of tuples if told to use cached metadata
+        if use_cache and self._metadata_cache:
+            sys.stderr.write("Loading cached metadata. Please wait...")
+            col_meta = []
+            table_meta = {}
+
+            for table in self._metadata_cache:
+
+                # table metadata
+                table_meta[table['name']] = {k: table[k] for k in ('schema', 'name', 'foreign_keys', 'ref_keys')}
+
+                # col metadata: format as list of tuples, to match how normal loading is performed
+                for col in table['columns']:
+                    col_meta.append((col['schema'], col['table'], col['name'], col['type']))
+        else:
+            sys.stderr.write("Refreshing schema. Please wait...")
+            if self.schemas is not None and isinstance(self.schemas, list) and 'schema_specified' in \
+                    self._query_templates['system']:
+                schemas_str = ','.join([repr(schema) for schema in self.schemas])
+                q = self._query_templates['system']['schema_specified'] % schemas_str
+            elif exclude_system_tables:
+                q = self._query_templates['system']['schema_no_system']
+            else:
+                q = self._query_templates['system']['schema_with_system']
+            self.cur.execute(q)
+            col_meta = self.cur
+
+        return col_meta, table_meta
+
+    def _gen_tables_from_col_tuples(self, cols):
+
         tables = {}
-        for (table_name, column_name, data_type)in self.cur:
+        # generate our Columns, and attach to each table to the table name in dict
+        for (table_schema, table_name, column_name, data_type) in cols:
             if table_name not in tables:
                 tables[table_name] = []
-            tables[table_name].append(Column(self.con, self._query_templates, table_name, column_name, data_type, self.keys_per_column))
+            tables[table_name].append(Column(self.con, self._query_templates, table_schema,
+                                             table_name, column_name, data_type, self.keys_per_column))
 
-        self._tables = TableSet([Table(self.con, self._query_templates, t, tables[t], keys_per_column=self.keys_per_column) for t in sorted(tables.keys())])
-        sys.stderr.write("done!\n")
+        return tables
 
     def _try_command(self, cmd):
         try:
@@ -1530,6 +1668,7 @@ class DB(object):
         sys.stderr.write("Transfering {0} to s3 in chunks".format(name))
         len_df = len(df)
         chunks = range(0, len_df, chunk_size)
+
         def upload_chunk(i):
             conn = S3Connection(AWS_ACCESS_KEY, AWS_SECRET_KEY)
             chunk = df[i:(i+chunk_size)]
@@ -1593,6 +1732,20 @@ class DB(object):
             conn.delete_bucket(bucket_name)
         sys.stderr.write("done!")
 
+    def to_dict(self):
+        """Dict representation of the database as credentials plus tables dict representation."""
+        db_dict = self.credentials
+        db_dict.update(self.tables.to_dict())
+        return db_dict
+
+
+def load_from_json(file_path):
+    """Load the stored data from json, and return as a dict."""
+    if os.path.exists(file_path):
+        raw_data = open(file_path, 'rb').read()
+        return json.loads(base64.decodestring(raw_data).decode('utf-8'))
+
+
 def list_profiles():
     """
     Lists all of the database profiles available
@@ -1621,8 +1774,12 @@ def list_profiles():
     user = os.path.expanduser("~")
     for f in os.listdir(user):
         if f.startswith(".db.py_"):
-            profilePath = os.path.join(user, f)
-            profile = json.loads(base64.decodestring(open(profilePath,'rb').read()).decode('utf-8'))
+            profile = load_from_json(os.path.join(user, f))
+            tables = profile.pop('tables', None)
+            if tables:
+                profile['metadata'] = True
+            else:
+                profile['metadata'] = False
             profiles[f[7:]] = profile
     return profiles
 
@@ -1633,10 +1790,10 @@ def remove_profile(name, s3=False):
     
     """
     user = os.path.expanduser("~")
-    if s3==True:
-        f = os.path.join(user, ".db.py_s3_" + name)
+    if s3:
+        f = os.path.join(user, S3_PROFILE_ID + name)
     else:
-        f = os.path.join(user, ".db.py_" + name)
+        f = os.path.join(user, DBPY_PROFILE_ID + name)
     try:
         try:
             open(f)
@@ -1647,11 +1804,26 @@ def remove_profile(name, s3=False):
         raise Exception("Could not remove profile {0}! Excpetion: {1}".format(name, e))
 
 
-def DemoDB(keys_per_column=None):
+def dump_to_json(file_path, data):
+    with open(file_path, 'wb') as f:
+        json_data = json.dumps(data)
+        try:
+            f.write(base64.encodestring(json_data))
+        except:
+            f.write(base64.encodestring(bytes(json_data, 'utf-8')))
+
+
+def _profile_path(profile_id, profile):
+    """Create full path to given provide for the current user."""
+    user = os.path.expanduser("~")
+    return os.path.join(user, profile_id + profile)
+
+
+def DemoDB(keys_per_column=None, **kwargs):
     """
     Provides an instance of DB that hooks up to the Chinook DB
     See http://chinookdatabase.codeplex.com/ for more info.
     """
     _ROOT = os.path.abspath(os.path.dirname(__file__))
     chinook = os.path.join(_ROOT, 'data', "chinook.sqlite")
-    return DB(filename=chinook, dbtype="sqlite", keys_per_column=keys_per_column)
+    return DB(filename=chinook, dbtype="sqlite", keys_per_column=keys_per_column, **kwargs)
