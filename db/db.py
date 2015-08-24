@@ -22,6 +22,7 @@ from .queries import postgres as postgres_templates
 from .queries import sqlite as sqlite_templates
 from .queries import mssql as mssql_templates
 
+from .utils import profile_path
 
 queries_templates = {
     "mysql": mysql_templates,
@@ -159,7 +160,8 @@ class Column(object):
         1              Stuttgart
         Name: City, dtype: object
         """
-        q = self._query_templates['column']['head'].format(column=self.name, table=self.table, n=n)
+        q = self._query_templates['column']['head'].format(column=self.name, schema=self.schema,
+                                                           table=self.table, n=n)
         return pd.read_sql(q, self._con)[self.name]
 
     def all(self):
@@ -186,7 +188,8 @@ class Column(object):
         >>> len(df)
         59
         """
-        q = self._query_templates['column']['all'].format(column=self.name, table=self.table)
+        q = self._query_templates['column']['all'].format(column=self.name, schema=self.schema,
+                                                          table=self.table)
         return pd.read_sql(q, self._con)[self.name]
 
     def unique(self):
@@ -217,7 +220,8 @@ class Column(object):
         >>> len(db.tables.Customer.LastName.unique())
         59
         """
-        q = self._query_templates['column']['unique'].format(column=self.name, table=self.table)
+        q = self._query_templates['column']['unique'].format(column=self.name, schema=self.schema,
+                                                             table=self.table)
         return pd.read_sql(q, self._con)[self.name]
 
     def sample(self, n=10):
@@ -258,7 +262,8 @@ class Column(object):
         >>> len(df)
         10
         """
-        q = self._query_templates['column']['sample'].format(column=self.name, table=self.table, n=n)
+        q = self._query_templates['column']['sample'].format(column=self.name, schema=self.schema,
+                                                             table=self.table, n=n)
         return pd.read_sql(q, self._con)[self.name]
 
     def to_dict(self):
@@ -388,7 +393,8 @@ class Table(object):
         # select name & composer from the Track table
         >>> df = db.tables.Track.select("Name", "Composer")
         """
-        q = self._query_templates['table']['select'].format(columns=", ".join(args), table=self.name)
+        q = self._query_templates['table']['select'].format(columns=", ".join(args), schema=self.schema,
+                                                            table=self.name)
         return pd.read_sql(q, self._con)
 
     def head(self, n=6):
@@ -451,7 +457,8 @@ class Table(object):
            UnitPrice
         0       0.99
         """
-        q = self._query_templates['table']['head'].format(table=self.name, n=n)
+        q = self._query_templates['table']['head'].format(schema=self.schema,
+                                                          table=self.name, n=n)
         return pd.read_sql(q, self._con)
 
     def all(self):
@@ -471,7 +478,8 @@ class Table(object):
         >>> df = db.tables.Track.all()
         """
 
-        q = self._query_templates['table']['all'].format(table=self.name)
+        q = self._query_templates['table']['all'].format(schema=self.schema,
+                                                         table=self.name)
         return pd.read_sql(q, self._con)
 
     def unique(self, *args):
@@ -528,7 +536,8 @@ class Table(object):
             columns = "*"
         else:
             columns = ", ".join(args)
-        q = self._query_templates['table']['unique'].format(columns=columns, table=self.name)
+        q = self._query_templates['table']['unique'].format(columns=columns, schema=self.schema,
+                                                            table=self.name)
         return pd.read_sql(q, self._con)
 
     def sample(self, n=10):
@@ -589,7 +598,8 @@ class Table(object):
         8        283951   9258717       0.99
         9        404453  13186975       0.99
         """
-        q = self._query_templates['table']['sample'].format(table=self.name, n=n)
+        q = self._query_templates['table']['sample'].format(schema=self.schema,
+                                                            table=self.name, n=n)
         return pd.read_sql(q, self._con)
 
     @property
@@ -725,7 +735,7 @@ class S3(object):
         profile: str
             name for your profile (i.e. "dev", "prod")
         """
-        filename = _profile_path(S3_PROFILE_ID, profile)
+        filename = profile_path(S3_PROFILE_ID, profile)
         creds = {
             "access_key": self.access_key,
             "secret_key": self.secret_key
@@ -744,7 +754,7 @@ class S3(object):
         profile: str
             identifier/name for your database (i.e. "dev", "prod")
         """
-        f = _profile_path(S3_PROFILE_ID, profile)
+        f = profile_path(S3_PROFILE_ID, profile)
         if os.path.exists(f):
             creds = json.loads(base64.decodestring(open(f, 'rb').read()).encode('utf-8'))
             if 'access_key' not in creds:
@@ -972,7 +982,7 @@ class DB(object):
         profile: str
             (optional) identifier/name for your database (i.e. "dw", "prod")
         """
-        f = _profile_path(DBPY_PROFILE_ID, profile)
+        f = profile_path(DBPY_PROFILE_ID, profile)
         if f:
             creds = load_from_json(f)
             self.username = creds.get('username')
@@ -1009,12 +1019,12 @@ class DB(object):
         >>> db = DemoDB()
         >>> db.save_credentials(profile='test')
         """
-        f = _profile_path(DBPY_PROFILE_ID, profile)
+        f = profile_path(DBPY_PROFILE_ID, profile)
         dump_to_json(f, self.credentials)
 
     @staticmethod
     def load_metadata(profile="default"):
-        f = _profile_path(DBPY_PROFILE_ID, profile)
+        f = profile_path(DBPY_PROFILE_ID, profile)
         if f:
             prof = load_from_json(f)
             return prof.get('tables', None)
@@ -1022,7 +1032,7 @@ class DB(object):
     def save_metadata(self, profile="default"):
         """Save the database credentials, plus the database properties to your db.py profile."""
         if len(self.tables) > 0:
-            f = _profile_path(DBPY_PROFILE_ID, profile)
+            f = profile_path(DBPY_PROFILE_ID, profile)
             dump_to_json(f, self.to_dict())
 
     @property
@@ -1539,11 +1549,12 @@ class DB(object):
 
     def _get_db_metadata(self, exclude_system_tables, use_cache):
 
+        col_meta = []
+        table_meta = {}
+
         # pull out column metadata for all tables as list of tuples if told to use cached metadata
         if use_cache and self._metadata_cache:
             sys.stderr.write("Loading cached metadata. Please wait...")
-            col_meta = []
-            table_meta = {}
 
             for table in self._metadata_cache:
 
@@ -1811,12 +1822,6 @@ def dump_to_json(file_path, data):
             f.write(base64.encodestring(json_data))
         except:
             f.write(base64.encodestring(bytes(json_data, 'utf-8')))
-
-
-def _profile_path(profile_id, profile):
-    """Create full path to given provide for the current user."""
-    user = os.path.expanduser("~")
-    return os.path.join(user, profile_id + profile)
 
 
 def DemoDB(keys_per_column=None, **kwargs):
