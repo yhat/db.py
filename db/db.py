@@ -1473,7 +1473,7 @@ class DB(object):
         rows_to_insert = []
         tables = [row[0] for row in self.cur.execute("select name from sqlite_master where type='table';")]
         for table in tables:
-            for row in self.cur.execute("pragma table_info({0})".format(table)):
+            for row in self.cur.execute("pragma table_info('{0}')".format(table)):
                 rows_to_insert.append((table, row[1], row[2]))
         # find for table and column names
         self.cur.execute("drop table if exists tmp_dbpy_schema;")
