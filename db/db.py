@@ -937,7 +937,9 @@ class DB(object):
                             pwd=self.password)
                     self.cur = self.con.cursor()
             elif HAS_PYMSSQL:
-                if hasattr(self, 'port'):
+                if '\\' in self.hostname:
+                    hostname = self.hostname
+                elif hasattr(self, 'port'):
                     hostname = '{0}:{1}'.format(self.hostname, self.port)
                 else:
                     hostname = self.hostname
