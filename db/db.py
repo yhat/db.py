@@ -880,6 +880,7 @@ class DB(object):
                 raise Exception("Couldn't find psycopg2 library. Please ensure it is installed")
             self.con = pg.connect(user=self.username, password=self.password,
                 host=self.hostname, port=self.port, dbname=self.dbname)
+            self.con.autocommit = True
             self.cur = self.con.cursor()
         elif self.dbtype=="sqlite":
             if not HAS_SQLITE:
