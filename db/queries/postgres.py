@@ -46,6 +46,7 @@ queries = {
         "foreign_keys_for_table": """
             SELECT
                 kcu.column_name
+                , ccu.table_schema as foreign_table_schema
                 , ccu.table_name AS foreign_table_name
                 , ccu.column_name AS foreign_column_name
             FROM
@@ -59,7 +60,8 @@ queries = {
         "foreign_keys_for_column": """
             SELECT
                 kcu.column_name
-                , ccu.table_name AS foreign_table_name
+                , ccu.table_name AS foreign_table_schema
+                , ccu.table_schema AS foreign_table_name
                 , ccu.column_name AS foreign_column_name
             FROM
                 information_schema.table_constraints AS tc
@@ -72,6 +74,7 @@ queries = {
         "ref_keys_for_table": """
             SELECT
                 ccu.column_name
+                , kcu.table_schema AS foreign_table_schema
                 , kcu.table_name AS foreign_table_name
                 , kcu.column_name AS foreign_column_name
             FROM
