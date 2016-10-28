@@ -13,11 +13,12 @@ queries = {
         "sample": "select * from {table} order by random() limit {n};"
     },
     "system": {
-        "schema_no_system": "select table_name, column_name, data_type from tmp_dbpy_schema;",
-        "schema_with_system": "select table_name, column_name, data_type from tmp_dbpy_schema;",
+        "schema_no_system": "select 'public', table_name, column_name, data_type from tmp_dbpy_schema;",
+        "schema_with_system": "select 'public', table_name, column_name, data_type from tmp_dbpy_schema;",
         "foreign_keys_for_table": """
             select
                 column_name
+                , 'public' as foreign_table_schema
                 , foreign_table as foreign_table_name
                 , foreign_column as foreign_column_name
             from
@@ -28,6 +29,7 @@ queries = {
         "foreign_keys_for_column": """
             select
                 column_name
+                , 'public' as ref_table_schema
                 , foreign_table as foreign_table_name
                 , foreign_column as foreign_column_name
             from
@@ -38,6 +40,7 @@ queries = {
         "ref_keys_for_table": """
             select
                  foreign_column
+                 , 'schema' as schema
                  , table_name
                  , column_name
             from

@@ -15,7 +15,8 @@ queries = {
     "system": {
         "schema_no_system": """
                 select
-                    table_name
+                    table_schema
+                    , table_name
                     , column_name
                     , udt_name
                 from
@@ -25,7 +26,8 @@ queries = {
                 """,
         "schema_with_system": """
                 select
-                    table_name
+                    table_schema
+                    , table_name
                     , column_name
                     , udt_name
                 from
@@ -33,7 +35,8 @@ queries = {
                 """,
         "schema_specified": """
                 select
-                    table_name
+                    table_schema
+                    , table_name
                     , column_name
                     , udt_name
                 from
