@@ -1,4 +1,5 @@
 queries = {
+    "dbtype": "sqlite",
     "column": {
         "head": "select {column} from {table} limit {n};",
         "all": "select {column} from {table};",

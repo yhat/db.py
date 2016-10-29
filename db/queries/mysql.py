@@ -1,4 +1,5 @@
 queries = {
+    "dbtype": "mysql",
     "column": {
         "head": "select {column} from {schema}.{table} limit {n};",
         "all": "select {column} from {schema}.{table};",
@@ -42,6 +43,7 @@ queries = {
                 """,
         "foreign_keys_for_table": """
         select column_name
+            , referenced_table_schema
             , referenced_table_name
             , referenced_column_name
         from
@@ -53,6 +55,7 @@ queries = {
         """,
         "foreign_keys_for_column": """
         select column_name
+            , referenced_table_schema
             , referenced_table_name
             , referenced_column_name
         from
@@ -65,6 +68,7 @@ queries = {
         """,
         "ref_keys_for_table": """
             select referenced_column_name
+                , table_schema
                 , table_name
                 , column_name
             from
@@ -76,6 +80,7 @@ queries = {
         """,
         "foreign_keys_for_db": """
             select column_name
+                , referenced_table_schema
                 , referenced_table_name
                 , referenced_column_name
             FROM
@@ -84,6 +89,7 @@ queries = {
         """,
         "ref_keys_for_db": """
             SELECT referenced_column_name,
+                   table_schema,
                    table_name,
                    column_name
             FROM

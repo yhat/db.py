@@ -1,4 +1,5 @@
 queries = {
+    "dbtype": "mssql",
     "column": {
         "head": "select top {n} {column} from {table};",
         "all": "select {column} from {table};",
@@ -82,4 +83,3 @@ queries = {
         """
     }
 }
-
