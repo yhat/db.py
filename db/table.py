@@ -84,6 +84,15 @@ class Table(object):
     def _repr_html_(self):
         return self._tablify().get_html_string()
 
+    def _format_columns(self, columns):
+        if len(columns) == 0:
+            return "*"
+
+        if self._query_templates['dbtype']=="postgres":
+            columns = ['"%s"' % column for column in columns]
+
+        return ", ".join(columns)
+
     def select(self, *args):
         """
         Returns DataFrame of table with arguments selected as columns. This is
@@ -125,7 +134,7 @@ class Table(object):
         # select name & composer from the Track table
         >>> df = db.tables.Track.select("Name", "Composer")
         """
-        q = self._query_templates['table']['select'].format(columns=", ".join(args), schema=self.schema,
+        q = self._query_templates['table']['select'].format(columns=self._format_columns(args), schema=self.schema,
                                                             table=self.name)
         return pd.read_sql(q, self._con)
 
@@ -264,12 +273,9 @@ class Table(object):
         >>> len(db.tables.Track.unique("GenreId", "MediaTypeId"))
         38
         """
-        if len(args) == 0:
-            columns = "*"
-        else:
-            columns = ", ".join(args)
-        q = self._query_templates['table']['unique'].format(columns=columns, schema=self.schema,
+        q = self._query_templates['table']['unique'].format(columns=self._format_columns(args), schema=self.schema,
                                                             table=self.name)
+
         return pd.read_sql(q, self._con)
 
     def sample(self, n=10):
