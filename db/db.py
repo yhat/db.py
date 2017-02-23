@@ -14,7 +14,7 @@ from collections import defaultdict
 import pandas as pd
 import pybars
 
-from .column import Column
+from .column import Column, ColumnSet
 from .table import Table, TableSet
 from .s3 import S3
 from .utils import profile_path, load_profile, load_from_json, dump_to_json
