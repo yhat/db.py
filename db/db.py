@@ -134,7 +134,7 @@ class DB(object):
     def __init__(self, username=None, password=None, hostname="localhost",
             port=None, filename=None, dbname=None, dbtype=None, schemas=None,
             profile="default", exclude_system_tables=True, limit=1000,
-            keys_per_column=None, driver=None, cache=False):
+            keys_per_column=None, driver=None, cache=False, extensions=[]):
 
         if port is None:
             if dbtype=="postgres":
@@ -173,6 +173,7 @@ class DB(object):
             self.limit = limit
             self.keys_per_column = keys_per_column
             self.driver = driver
+            self.extensions = extensions
 
         if self.dbtype is None:
             raise Exception("Database type not specified! Must select one of: postgres, sqlite, mysql, mssql, or redshift")
@@ -189,6 +190,10 @@ class DB(object):
             if not HAS_SQLITE:
                 raise Exception("Couldn't find sqlite library. Please ensure it is installed")
             self.con = sqlite.connect(self.filename)
+            if self.extensions:
+                self.con.enable_load_extension(True)
+                for ext in self.extensions:
+                    self.con.load_extension(ext)
             self.cur = self.con.cursor()
             self._create_sqlite_metatable()
         elif self.dbtype=="mysql":
