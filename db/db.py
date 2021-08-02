@@ -82,7 +82,7 @@ class DB(object):
         Hostname your database is running on (i.e. "localhost", "10.20.1.248")
     port: int
         Port the database is running on. defaults to default port for db.
-            portgres: 5432
+            postgres: 5432
             redshift: 5439
             mysql: 3306
             sqlite: n/a
@@ -278,7 +278,7 @@ class DB(object):
 
     def load_credentials(self, profile="default"):
         """
-        Loads crentials for a given profile. Profiles are stored in
+        Loads credentials for a given profile. Profiles are stored in
         ~/.db.py_{profile_name} and are a base64 encoded JSON file. This is not
         to say this a secure way to store sensitive data, but it will probably
         stop your little sister from stealing your passwords.
@@ -979,7 +979,7 @@ class DB(object):
         else:
             bucket = conn.create_bucket(bucket_name, location=bucket_location)
         # we're going to chunk the file into pieces. according to amazon, this is
-        # much faster when it comes time to run the \COPY statment.
+        # much faster when it comes time to run the \COPY statement.
         #
         # see http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html
         sys.stderr.write("Transfering {0} to s3 in chunks".format(name))

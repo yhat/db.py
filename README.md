@@ -458,7 +458,7 @@ See either the TODO below or [Adding a Database](./docs/adding-a-db-checklist.md
     - [x] mssql (going to be a little trickier since i don't have one)
 - [x] publish examples to nbviewer
 - [x] improve documentation and readme
-- [x] add sample database to distrobution
+- [x] add sample database to distribution
 - [x] push to Redshift
 - [ ] "joins to" for columns
     - [x] postgres

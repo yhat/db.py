@@ -31,7 +31,7 @@ class S3(object):
 
     def load_credentials(self, profile):
         """
-        Loads crentials for a given profile. Profiles are stored in
+        Loads credentials for a given profile. Profiles are stored in
         ~/.db.py_s3_{profile_name} and are a base64 encoded JSON file. This is
         not to say this a secure way to store sensitive data, but it will
         probably stop your little sister from spinning up EC2 instances.

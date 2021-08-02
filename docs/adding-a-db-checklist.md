@@ -53,7 +53,7 @@ all the same). Here's a checklist of what you'll need to do:
     - [ ] ref_keys_for_table
 
 Create a file called `foosql.py` and put it in the [`queries`](https://github.com/yhat/db.py/tree/master/db/queries) 
-directory. Once you've written the neccessary queries, add an import statement 
+directory. Once you've written the necessary queries, add an import statement 
 to the `db.py` file. It will look something like this:
 
 ```python

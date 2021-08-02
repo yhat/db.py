@@ -549,7 +549,7 @@ TODO
 
 -  [x] publish examples to nbviewer
 -  [x] improve documentation and readme
--  [x] add sample database to distrobution
+-  [x] add sample database to distribution
 -  [x] push to Redshift
 -  [ ] "joins to" for columns
 
